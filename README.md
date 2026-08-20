@@ -10,7 +10,7 @@ n8n orchestration + intent routing + Docker deployment stack.
 ## Repository map
 
 ```
-config/           settings.yaml, identity.yaml (ΟΛΕΣ οι ρυθμίσεις εδώ)
+config/           settings.yaml + *.example.yaml templates (ΟΛΕΣ οι ρυθμίσεις εδώ)
 src/jarvis/
   extraction/     Phase 1 — Viber & email → normalized JSONL
   sanitization/   PII removal (Greek-specific, GDPR) ← τρέχει ΠΡΙΝ από κάθε training
@@ -23,7 +23,7 @@ databricks/       Medallion pipeline 01→05 (bronze → silver → gold → emb
 notebooks/        Colab notebooks (A100)
 n8n/workflows/    n8n workflow JSON files (import στο n8n UI)
 scripts/          run_sanitization.py
-tests/            pytest suite (81 tests) — `python -m pytest`
+tests/            pytest suite (201 tests) — `python -m pytest`
 docs/             architecture.md (v5)
 docker-compose.yml  Mac Mini M4 deployment stack
 ```
@@ -41,8 +41,10 @@ docker-compose.yml  Mac Mini M4 deployment stack
 | 5 | RAG integration in inference | ✅ BM25 done, embeddings pending |
 | 6 | **n8n orchestration + intent routing** | ✅ workflow + granular API |
 | 7 | Docker deployment stack (Mac Mini M4) | ✅ docker-compose ready |
-| 8 | Ray distributed training wrapper | 📋 planned |
-| 9 | Evaluation framework (Mistral vs Krikri) | 📋 planned |
+| 8 | **Ray distributed training wrapper** | ✅ `TorchTrainer` + scaling analysis |
+| 9 | **Evaluation framework** | ✅ accuracy / naturalness / reliability |
+| 10 | **Greek PII audit + re-sanitisation** | ✅ 8.1% leak found and closed |
+| 11 | Local GGUF deployment (no cloud dependency) | 🔄 retrain in progress |
 
 ## Models
 
@@ -63,4 +65,31 @@ python -m ruff check src tests
 
 * Το `jarvis_training_data.json` (raw) **δεν μπαίνει ποτέ** σε training, git, ή chat upload.
 * Το `config/contacts.txt` είναι gitignored — προσωπικά δεδομένα.
-* Training **μόνο** με `jarvis_training_data_sanitized.json` που έχει περάσει το post-scan.
+* Training **μόνο** με το corpus που έχει περάσει το post-scan (`data/jarvis_training_data_v4.json`).
+* Τα `config/identity.yaml` και `config/golden_examples.yaml` είναι gitignored — περιέχουν
+  προσωπικά δεδομένα του υποκειμένου. Ξεκίνα από τα αντίστοιχα `*.example.yaml`:
+
+  ```bash
+  cp config/identity.example.yaml config/identity.yaml
+  cp config/golden_examples.example.yaml config/golden_examples.yaml
+  ```
+
+### Εύρημα: ανίχνευση ονομάτων σε casual ελληνικά
+
+Ο αρχικός sanitiser εντόπιζε ονόματα με τον κανόνα «δύο διαδοχικές κεφαλαιογράμματες
+λέξεις» — τη μορφή *Μαρία Παπαδοπούλου*. Έλεγχος στις 13.289 εγγραφές του corpus έδειξε
+ότι ο κανόνας **έχανε το 8,1%**, επειδή τα ελληνικά του instant messaging είναι πεζά,
+άτονα, και σε κλητική με σκέτο μικρό όνομα (`γιωτα ελα`). Ένας κανόνας εξαρτημένος από
+κεφαλαία είναι δομικά τυφλός στην κυρίαρχη πραγματική μορφή.
+
+Η αντικατάστασή του (`src/jarvis/sanitization/greek_names.py`) ανιχνεύει μορφολογικά:
+λεξικό θεμάτων συν κλειστό σύνολο κλιτικών καταλήξεων, με κανονικοποίηση τόνων και
+τελικού σίγμα. Διαρροές: 1.070 εγγραφές → 0.
+
+Δύο παγίδες που χρειάστηκε να αντιμετωπιστούν και αξίζουν αναφορά:
+
+* `str.casefold()` αντιστοιχίζει το τελικό σίγμα `ς` στο `σ`, οπότε λεξικά γραμμένα
+  φυσικά δεν ταίριαζαν ποτέ — αστοχία που μοιάζει με αυστηρότερο φίλτρο αντί για σφάλμα.
+* Ελληνικά ονόματα που είναι **ταυτόχρονα** ημερολογιακοί όροι (*Παρασκευή*, *Κυριακή*,
+  *Ιούλιος*) ή τοπωνύμια (*Γιαννιτσά*). Μια πρώτη έκδοση διέγραψε 268 εμφανίσεις του
+  «Παρασκευή» — δηλαδή ακριβώς το λεξιλόγιο ραντεβού. Βλ. `CALENDAR_AND_PLACES`.
