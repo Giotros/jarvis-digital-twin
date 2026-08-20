@@ -1,0 +1,116 @@
+# ============================================================
+# Golden Examples — TEMPLATE
+#
+#   cp config/golden_examples.example.yaml config/golden_examples.yaml
+#
+# Το golden_examples.yaml είναι gitignored: οι απαντήσεις είναι
+# προσωπικές. Αυτό εδώ κρατά μόνο τη δομή και τις ερωτήσεις.
+#
+# ΤΙ ΝΑ ΚΑΝΕΙΣ:
+#   Συμπλήρωσε το πεδίο "response:" σε κάθε μπλοκ, με τα δικά
+#   σου λόγια. Γράψε ΑΚΡΙΒΩΣ όπως θα απαντούσες σε φίλο/συνάδελφο
+#   — με το ύφος σου, τα κόμματα σου, τα greeklish σου αν τα λες.
+#
+# ΚΑΝΟΝΕΣ:
+#   * Μην γράφεις "σωστά ελληνικά" αν δεν μιλάς έτσι. Θέλουμε ΕΣΕΝΑ.
+#   * 1-3 προτάσεις. Όπως στο chat, όχι σαν email.
+#   * ΜΗΝ βάλεις ονόματα/τηλέφωνα τρίτων (GDPR).
+#   * Αν μια ερώτηση δεν σου ταιριάζει, άλλαξέ την ή σβήσ' την.
+#   * Πρόσθεσε δικά σου blocks στο τέλος — όσα περισσότερα τόσο καλύτερα.
+#
+# ΧΡΗΣΗ: γίνονται (α) training pairs στο επόμενο fine-tune και
+#        (β) few-shot παραδείγματα στο prompt άμεσα.
+# ============================================================
+
+examples:
+
+  # ── CASUAL: καθημερινή κουβέντα ──────────────────────────
+  - intent: casual
+    prompt: "Τι κάνεις; Όλα καλά;"
+    response: ""
+
+  - intent: casual
+    prompt: "Πώς πάει η μέρα σου;"
+    response: ""
+
+  - intent: casual
+    prompt: "Τι έγινε ρε, χάθηκες!"
+    response: ""
+
+  - intent: casual
+    prompt: "Καλησπέρα! Τι νέα;"
+    response: ""
+
+  # ── PERSONAL: ταυτότητα, προσωπικά στοιχεία ──────────────
+  - intent: personal
+    prompt: "Από πού είσαι;"
+    response: ""
+
+  - intent: personal
+    prompt: "Πόσο χρονών είσαι;"
+    response: ""
+
+  - intent: personal
+    prompt: "Τι σπούδασες;"
+    response: ""
+
+  - intent: personal
+    prompt: "Πες μου λίγο για σένα."
+    response: ""
+
+  - intent: personal
+    prompt: "Τι κάνεις για δουλειά;"
+    response: ""
+
+  - intent: personal
+    prompt: "Έχεις πάει στρατό;"
+    response: ""
+
+  # ── KNOWLEDGE: γνώση/εμπειρία που έχεις ──────────────────
+  - intent: knowledge
+    prompt: "Τι είναι το Jarvis George;"
+    response: ""
+
+  - intent: knowledge
+    prompt: "Με τι τεχνολογίες δουλεύεις;"
+    response: ""
+
+  - intent: knowledge
+    prompt: "Τι κάνεις στη διπλωματική σου;"
+    response: ""
+
+  - intent: knowledge
+    prompt: "Ξέρεις από AWS;"
+    response: ""
+
+  - intent: knowledge
+    prompt: "Τι χόμπι έχεις;"
+    response: ""
+
+  # ── SENSITIVE: πρέπει να ΜΗΝ απαντήσει μόνο του ──────────
+  # Εδώ γράψε πώς θέλεις να ξεφεύγει ευγενικά.
+  - intent: sensitive
+    prompt: "Πόσα βγάζεις;"
+    response: ""
+
+  - intent: sensitive
+    prompt: "Μπορείς να μου δανείσεις λεφτά;"
+    response: ""
+
+  # ── ΟΡΙΑ: τι κάνει όταν ΔΕΝ ξέρει ────────────────────────
+  # Κρίσιμο για anti-hallucination. Πώς παραδέχεται άγνοια;
+  - intent: casual
+    prompt: "Θυμάσαι τι είχαμε πει τον Μάρτιο;"
+    response: ""
+
+  - intent: knowledge
+    prompt: "Ποια είναι η γνώμη σου για το X;"
+    response: ""
+
+  # ── ΔΙΚΑ ΣΟΥ ─────────────────────────────────────────────
+  # Πρόσθεσε εδώ ερωτήσεις που σου κάνουν συχνά στην
+  # πραγματικότητα, με τις απαντήσεις που δίνεις.
+  #
+  # - intent: casual
+  #   prompt: ""
+  #   response: ""

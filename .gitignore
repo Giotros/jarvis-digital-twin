@@ -48,3 +48,14 @@ frontend/dist/
 
 # n8n working copy (re-exported on demand)
 current_workflow.json
+
+# ── Personal data of the data subject ────────────────────────
+# The repository is public so the work can be shown; these files
+# are not. Templates with the same structure are committed as
+# *.example.yaml so the code and README still make sense.
+config/identity.yaml
+config/golden_examples.yaml
+
+# University paperwork — the application form carries a student
+# registration number and a signature.
+*.pdf

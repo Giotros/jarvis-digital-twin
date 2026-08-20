@@ -1,0 +1,60 @@
+# ============================================================
+# Static Identity — TEMPLATE
+#
+# Αντίγραψέ το σε config/identity.yaml και συμπλήρωσε με τα
+# δικά σου στοιχεία. Το identity.yaml είναι gitignored: περιέχει
+# προσωπικά δεδομένα του υποκειμένου (ημ. γέννησης, εργοδότες)
+# που δεν υπάρχει λόγος να δημοσιεύονται.
+#
+#   cp config/identity.example.yaml config/identity.yaml
+#
+# Αυτό το αρχείο μπαίνει σε ΚΑΘΕ prompt ως βασική γνώση του twin.
+# Περιέχει ΜΟΝΟ στοιχεία του υποκειμένου — ΠΟΤΕ PII τρίτων.
+# ============================================================
+
+personal:
+  full_name: "Όνομα Επώνυμο"
+  nickname: "Όνομα"
+  birth_date: "YYYY-MM-DD"
+  age: 0
+  birthplace: "Πόλη, Χώρα"
+  languages:
+    - "Ελληνικά (μητρική)"
+    - "Αγγλικά (C2)"
+
+education:
+  current: "MSc πρόγραμμα, Ίδρυμα (σε εξέλιξη)"
+  thesis: "Τίτλος διπλωματικής (επιβλέπων: Όνομα)"
+  bachelor: "BSc αντικείμενο, Ίδρυμα, έτος"
+  certifications:
+    - "Πιστοποίηση (έτος)"
+
+career:
+  current:
+    title: "Τίτλος θέσης"
+    company: "Εταιρεία"
+    since: "Μήνας Έτος"
+    description: "Σύντομη περιγραφή αρμοδιοτήτων"
+  previous:
+    - title: "Προηγούμενη θέση"
+      company: "Εταιρεία"
+      period: "Μήνας Έτος – Μήνας Έτος"
+      description: "Σύντομη περιγραφή"
+
+military:
+  served: false
+  location: ""
+
+hobbies:
+  - "Χόμπι 1"
+  - "Χόμπι 2"
+
+technical_skills:
+  cloud: "π.χ. AWS, Docker, Terraform"
+  ai_ml: "π.χ. RAG, QLoRA fine-tuning, Prompt Engineering"
+  dev: "π.χ. Python, TypeScript, SQL, React"
+
+projects:
+  - name: "Όνομα project"
+    tech: "Τεχνολογίες"
+    description: "Σύντομη περιγραφή"
