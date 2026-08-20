@@ -1,0 +1,12 @@
+# Copy this file to config/contacts.txt and add the real contact
+# names (one per line). contacts.txt is GITIGNORED — it is itself
+# personal data and must never be committed or shared.
+#
+# The sanitizer automatically also matches common Greek case
+# variants (e.g. Γιώργος → Γιώργο, Γιώργου), so the nominative
+# form is enough.
+#
+# Example entries (replace with the real 324-contact list):
+Γιώργος Παπαδόπουλος
+Μαρία Οικονόμου
+Νίκος

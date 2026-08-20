@@ -1,0 +1,11 @@
+# Jarvis George — core dependencies (local development)
+# Training-only deps (torch, bitsandbytes, trl, peft) are installed
+# inside the Colab notebook, pinned there — see notebooks/.
+pyyaml>=6.0
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.7
+
+# Development / testing
+pytest>=8.0
+ruff>=0.5

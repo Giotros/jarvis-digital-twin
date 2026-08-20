@@ -1,0 +1,8 @@
+# Jarvis API — lightweight deps (no torch/transformers)
+# Model inference goes through Ollama HTTP API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0
+httpx>=0.25.0
+pyyaml>=6.0
+rank-bm25>=0.2.2

@@ -1,0 +1,130 @@
+# ============================================================
+# Jarvis George — central configuration
+# Every path, model name and hyperparameter lives HERE,
+# not hardcoded inside scripts. (Refactoring rule #1)
+# ============================================================
+
+model:
+  # Primary model: Krikri-8B (Greek-native, 128K vocab, ILSP/Athena RC)
+  base: "ilsp/Llama-Krikri-8B-Instruct"
+  chat_format: "llama3"          # uses <|begin_of_text|><|start_header_id|>...
+  quantization: "nf4"            # bitsandbytes 4-bit NormalFloat
+  system_prompt: >
+    Είσαι ο Jarvis George, ψηφιακό δίδυμο του Γιώργου Τροχίδη.
+    Απαντάς στα ελληνικά με το ύφος και τον τρόπο επικοινωνίας του Γιώργου —
+    σύντομα, φιλικά, πρακτικά.
+  lora:
+    r: 64
+    alpha: 128
+    dropout: 0.05
+    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+  # Baseline model (for evaluation comparison only)
+  baseline:
+    base: "mistralai/Mistral-7B-Instruct-v0.2"
+    chat_format: "mistral"       # uses <s>[INST]...[/INST]
+
+training:
+  persona_chat:                  # Part A — Mistral baseline only (COMPLETED 2026-06-21)
+    learning_rate: 2.0e-4
+    batch_size: 4                # A100 setting
+    save_steps: 50               # lesson learned: was 500, lost 83 steps
+  viber:                         # Part B — both models (sequential on Mistral, direct on Krikri)
+    learning_rate: 1.0e-4        # lower LR: fine-grained adaptation
+    batch_size: 4
+    save_steps: 50
+
+drive:                           # Google Drive paths (Colab: /content/drive/MyDrive)
+  root: "/content/drive/MyDrive"
+  raw_viber_json: "jarvis_training_data.json"            # CONTAINS PII — never train on this
+  sanitized_viber_json: "jarvis_training_data_sanitized.json"
+  persona_chat_json: "persona_chat_training_data.json"
+  models_dir: "jarvis_models"
+  persona_chat_adapters: "jarvis_models/persona_chat_qlora"
+  viber_adapters: "jarvis_models/viber_qlora"
+  krikri_adapters: "jarvis_models/krikri_qlora"
+
+databricks:
+  catalog: "digital_twin"
+  tables:
+    bronze_raw: "bronze.viber_messages_raw"
+    silver_clean: "silver.viber_messages_clean"
+    gold_pairs: "gold.viber_training_pairs"
+    gold_pairs_sanitized: "gold.viber_training_pairs_sanitized"
+    gold_embeddings: "gold.george_embeddings"
+  embedding_model: "databricks-gte-large-en"     # 1024-dim
+  generation_model: "databricks-meta-llama-3-3-70b-instruct"
+
+rag:
+  relevance_threshold: 0.62
+  rrf_k: 60
+  top_k: 5
+  bm25_k1: 1.5
+  bm25_b: 0.75
+  translate_greek_queries: true  # Greek → English before embedding
+
+sanitization:
+  contacts_file: "config/contacts.txt"   # one name per line — GITIGNORED
+  placeholders:
+    iban: "[IBAN]"
+    afm: "[ΑΦΜ]"
+    amka: "[ΑΜΚΑ]"
+    id_card: "[ΤΑΥΤΟΤΗΤΑ]"
+    phone: "[ΤΗΛΕΦΩΝΟ]"
+    email: "[EMAIL]"
+    name: "[ΟΝΟΜΑ]"
+
+inference:
+  host: "0.0.0.0"
+  port: 8000
+  max_new_tokens: 150
+  temperature: 0.5
+  top_p: 0.85
+  top_k: 40
+  repetition_penalty: 1.2
+
+guardrails:
+  capitalize_sentences: true
+  restore_accents: true
+  filter_profanity: true
+  remove_name_hallucinations: true
+  clean_emoji_artifacts: true
+  profanity_replacements:
+    "γαμησετα": "άστα να πάνε"
+    "γαμω": "ωχ"
+    "μαλακα": "φίλε"
+    "σκατα": "χάλια"
+  blocked_words:
+    - "γαμησε"
+    - "γαμησετα"
+    - "γαμω"
+    - "γαμησου"
+    - "γαμωτο"
+    - "πουτανα"
+    - "μαλακα"
+    - "σκατα"
+    - "αρχιδι"
+    - "μουνι"
+    - "γαμημεν"
+    - "σκασε"
+  impolite_words:
+    - "ρε"
+
+orchestration:
+  engine: "n8n"
+  n8n_url: "http://localhost:5678"
+  ollama_url: "http://localhost:11434"
+  ollama_model: "krikri-8b"
+  chromadb_url: "http://localhost:8100"
+  intent_classifier: "keyword"    # keyword (fast, no LLM) or llm (uses Ollama)
+  max_response_sentences: 3       # length check truncation
+  fact_check_enabled: true
+  human_review_intent: "sensitive" # intent that triggers human review
+  deployment:
+    stack: "docker-compose"
+    host: "mac-mini-m4"
+    api_port: 8000
+    n8n_port: 5678
+    ollama_port: 11434
+    webui_port: 3000
+    chromadb_port: 8100

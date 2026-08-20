@@ -1,0 +1,148 @@
+# ============================================================
+# Jarvis George — Local Deployment Stack (Mac Mini M4)
+#
+# Services:
+#   1. n8n        — workflow orchestration (port 5678)
+#   2. ollama     — LLM inference server (port 11434)
+#   3. open-webui — chat interface (port 3000)
+#   4. chromadb   — vector store for embeddings (port 8100)
+#   5. jarvis-api — FastAPI inference endpoints (port 8000)
+#
+# Usage:
+#   docker compose up -d
+#   # Import n8n workflow: n8n/workflows/digital_twin_v1.json
+#   # Pull Krikri model: docker exec ollama ollama pull ...
+# ============================================================
+
+services:
+  # ── n8n: Workflow Orchestration ────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: jarvis-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-jarvis}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-jarvis2026}
+      - GENERIC_TIMEZONE=Europe/Athens
+      - TZ=Europe/Athens
+      # Allow n8n to call other containers by service name
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_SECURE_COOKIE=false
+      - N8N_LOG_LEVEL=debug
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - jarvis-net
+    depends_on:
+      - jarvis-api
+
+  # ── Ollama: LLM Inference Server ──────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jarvis-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - jarvis-net
+    # Mac Mini M4: Apple Silicon acceleration via Docker
+    # On Linux with NVIDIA GPU, add:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Open WebUI: Chat Interface ────────────────────────────
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: jarvis-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - webui_data:/app/backend/data
+    networks:
+      - jarvis-net
+    depends_on:
+      - ollama
+
+  # ── ChromaDB: Vector Store ────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: jarvis-chromadb
+    restart: unless-stopped
+    ports:
+      - "8100:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+    networks:
+      - jarvis-net
+
+  # ── Jarvis API: FastAPI Inference ─────────────────────────
+  jarvis-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jarvis-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - JARVIS_ENABLED=true
+      - JARVIS_OLLAMA_URL=http://ollama:11434
+      - JARVIS_OLLAMA_FALLBACK=https://confined-cursive-plating.ngrok-free.dev
+      - JARVIS_MODEL=mistral
+      - JARVIS_FALLBACK_MODEL=krikri-8b
+      - JARVIS_CHROMA_URL=http://chromadb:8000
+      - JARVIS_CORPUS=/app/data/jarvis_training_data_sanitized.json
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+    networks:
+      - jarvis-net
+    depends_on:
+      - ollama
+      - chromadb
+
+  # ── Frontend: React UI ───────────────────────────────────────
+  frontend:
+    image: node:20-slim
+    container_name: jarvis-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install --silent 2>/dev/null; npx vite --host 0.0.0.0"
+    environment:
+      - NODE_ENV=development
+      - JARVIS_API_HOST=jarvis-api
+      - JARVIS_N8N_HOST=n8n
+    networks:
+      - jarvis-net
+    depends_on:
+      - jarvis-api
+      - n8n
+
+volumes:
+  n8n_data:
+  ollama_data:
+  webui_data:
+  chroma_data:
+
+networks:
+  jarvis-net:
+    driver: bridge

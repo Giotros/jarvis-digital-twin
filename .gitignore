@@ -1,0 +1,49 @@
+# ============================================================
+# CRITICAL: PII / personal data must NEVER be committed.
+# GDPR: raw Viber/email exports contain third-party personal
+# data (names, phones, AFM, AMKA, IBAN). Keep them out of git.
+# ============================================================
+data/
+*.db
+*.mbox
+jarvis_training_data*.json
+persona_chat_training_data*.json
+config/contacts.txt
+
+# Models / adapters (large binaries live on Drive, not git)
+models/
+*.safetensors
+*.gguf
+checkpoints/
+
+# Secrets
+.env
+*.pem
+credentials*.json
+token*.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Notebooks: keep outputs out of git noise (optional)
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / frontend build
+node_modules/
+frontend/dist/
+*.timestamp-*.mjs
+
+# n8n working copy (re-exported on demand)
+current_workflow.json

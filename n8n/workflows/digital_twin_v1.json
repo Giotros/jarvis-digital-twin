@@ -1,0 +1,968 @@
+{
+  "id": "tBPEVTfphTTV0xLr",
+  "name": "Jarvis George — Digital Twin v3 (Full Stack)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twin-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: Receive Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "d1a2b3c4-5e6f-7a8b-9c0d-e1f2a3b4c5d6"
+    },
+    {
+      "parameters": {
+        "url": "http://jarvis-api:8000/health",
+        "options": {}
+      },
+      "id": "toggle-check",
+      "name": "Toggle Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.twin_enabled }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "is-enabled",
+      "name": "Twin Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: 'Twin is OFF', status: 423 }) }}"
+      },
+      "id": "respond-disabled",
+      "name": "Respond: Twin OFF",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/intent",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $('Webhook: Receive Message').item.json.body.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "classify-intent",
+      "name": "Classify Intent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 280]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "sensitive", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "personal", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "knowledge", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "casual", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "memory", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "schedule", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "weather", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "news", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.intent }}", "rightValue": "devops", "operator": { "type": "string", "operation": "equals" } }]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "intent-router",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1120, 280]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ reply: 'Αυτό το θέμα χρειάζεται τον ίδιο τον Γιώργο. Θα σου απαντήσει σύντομα.', intent: 'sensitive', requires_human: true }) }}"
+      },
+      "id": "respond-sensitive",
+      "name": "Respond: Needs Human",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1380, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/identity",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Webhook: Receive Message').item.json.body.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "identity-lookup",
+      "name": "Identity Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/rag",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Webhook: Receive Message').item.json.body.message }}"
+            },
+            {
+              "name": "top_k",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "rag-search",
+      "name": "RAG Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.identity_prompt || '' }}\\n{{ $json.context || '' }}\",\n  \"temperature\": 0.5,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-personal",
+      "name": "Generate: Personal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"temperature\": 0.5,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-knowledge",
+      "name": "Generate: Knowledge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"\",\n  \"temperature\": 0.7,\n  \"max_new_tokens\": 80\n}",
+        "options": {}
+      },
+      "id": "generate-casual",
+      "name": "Generate: Casual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 480]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 5,
+        "additionalFields": {
+          "q": "={{ $('Webhook: Receive Message').item.json.body.message }}"
+        }
+      },
+      "id": "gmail-search",
+      "name": "Gmail: Search Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "disabled": true,
+      "position": [1380, 560],
+      "credentials": {
+        "gmailOAuth2Api": {
+          "id": "CONFIGURE_IN_N8N",
+          "name": "George Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract relevant info from Gmail results and format as context\nconst emails = $input.all();\nconst message = $('Webhook: Receive Message').item.json.body.message;\n\nlet context = 'ΠΡΟΣΦΑΤΑ EMAILS:\\n';\nfor (const email of emails.slice(0, 5)) {\n  const subject = email.json.subject || 'Χωρίς θέμα';\n  const from = email.json.from?.emailAddress || 'Άγνωστος';\n  const date = email.json.date || '';\n  const snippet = email.json.snippet || '';\n  context += `- ${date}: ${subject} (από ${from}) — ${snippet}\\n`;\n}\n\nreturn [{\n  json: {\n    context: context,\n    num_results: emails.length,\n    original_message: message\n  }\n}];"
+      },
+      "id": "format-email-context",
+      "name": "Format Email Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"system_prompt\": \"Είσαι ο Γιώργος. Απάντησε βάσει των emails που βρήκες. Αν δεν βρήκες σχετικό email, πες ότι δεν θυμάσαι.\",\n  \"temperature\": 0.4,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-memory",
+      "name": "Generate: Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 560]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "event",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 10,
+        "options": {
+          "timeMin": "={{ new Date().toISOString() }}",
+          "timeMax": "={{ new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }}"
+        }
+      },
+      "id": "calendar-lookup",
+      "name": "Calendar: Get Events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "disabled": true,
+      "position": [1380, 700],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "CONFIGURE_IN_N8N",
+          "name": "George Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse calendar events and find free slots\nconst events = $input.all();\nconst message = $('Webhook: Receive Message').item.json.body.message;\n\nlet context = 'ΠΡΟΓΡΑΜΜΑ ΕΒΔΟΜΑΔΑΣ:\\n';\nconst busySlots = [];\n\nfor (const event of events) {\n  const title = event.json.summary || 'Χωρίς τίτλο';\n  const start = event.json.start?.dateTime || event.json.start?.date || '';\n  const end = event.json.end?.dateTime || event.json.end?.date || '';\n  const location = event.json.location || '';\n  \n  const startDate = new Date(start);\n  const dayName = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'][startDate.getDay()];\n  const timeStr = startDate.toLocaleTimeString('el-GR', {hour: '2-digit', minute: '2-digit'});\n  \n  context += `- ${dayName} ${timeStr}: ${title}`;\n  if (location) context += ` (${location})`;\n  context += '\\n';\n  \n  busySlots.push({start, end, title});\n}\n\n// Simple free slot detection for tomorrow\nif (events.length === 0) {\n  context += '\\nΔΙΑΘΕΣΙΜΟΤΗΤΑ: Δεν υπάρχουν ραντεβού, είμαι διαθέσιμος.';\n} else {\n  context += `\\nΣΥΝΟΛΟ: ${events.length} ραντεβού αυτή τη βδομάδα.`;\n}\n\nreturn [{\n  json: {\n    context: context,\n    num_events: events.length,\n    original_message: message\n  }\n}];"
+      },
+      "id": "format-calendar-context",
+      "name": "Format Calendar Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"system_prompt\": \"Είσαι ο Γιώργος. Απάντησε βάσει του προγράμματός σου. Πρότεινε ελεύθερες ώρες αν σε ρωτήσουν.\",\n  \"temperature\": 0.4,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-schedule",
+      "name": "Generate: Schedule",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "id": "merge-responses",
+      "name": "Merge Responses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/fact-check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "response",
+              "value": "={{ $json.reply }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fact-check",
+      "name": "Fact Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2100, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/guardrails",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.passed ? $('Merge Responses').item.json.reply : $json.cleaned_response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "guardrails",
+      "name": "Guardrails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2340, 340]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Length check: if response > 3 sentences, truncate\nconst text = $input.first().json.processed;\nconst sentences = text.split(/[.!;]+/).filter(s => s.trim().length > 0);\n\nlet final_reply = text;\nif (sentences.length > 3) {\n  final_reply = sentences.slice(0, 3).join('. ').trim();\n  if (!final_reply.endsWith('.') && !final_reply.endsWith('!')) {\n    final_reply += '.';\n  }\n}\n\nreturn [{\n  json: {\n    reply: final_reply,\n    original_length: sentences.length,\n    truncated: sentences.length > 3,\n    guardrails_applied: $input.first().json.changed,\n    intent: $('Classify Intent').item.json.intent,\n    confidence: $('Classify Intent').item.json.confidence\n  }\n}];"
+      },
+      "id": "length-check",
+      "name": "Length Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2560, 340]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond-final",
+      "name": "Respond: Final",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2780, 340]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.openweathermap.org/data/2.5/weather?q={{ encodeURIComponent($('Webhook: Receive Message').item.json.body.city || 'Tripoli,GR') }}&appid={{ $credentials.httpHeaderAuth.value }}&units=metric&lang=el",
+        "options": {}
+      },
+      "id": "weather-lookup",
+      "name": "Weather: Get Current",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "disabled": true,
+      "position": [1380, 840],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_WEATHER_KEY",
+          "name": "OpenWeatherMap API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format weather data as context for LLM\nconst w = $input.first().json;\nconst message = $('Webhook: Receive Message').item.json.body.message;\n\nlet context = 'ΚΑΙΡΟΣ:\\n';\nif (w.main) {\n  const city = w.name || 'Άγνωστη πόλη';\n  const temp = Math.round(w.main.temp);\n  const feelsLike = Math.round(w.main.feels_like);\n  const desc = w.weather?.[0]?.description || '';\n  const humidity = w.main.humidity;\n  const wind = w.wind?.speed || 0;\n  \n  context += `Πόλη: ${city}\\n`;\n  context += `Θερμοκρασία: ${temp}°C (αισθητή: ${feelsLike}°C)\\n`;\n  context += `Καιρός: ${desc}\\n`;\n  context += `Υγρασία: ${humidity}%\\n`;\n  context += `Άνεμος: ${wind} m/s\\n`;\n} else {\n  context += 'Δεν βρέθηκαν δεδομένα καιρού.\\n';\n}\n\nreturn [{ json: { context, original_message: message } }];"
+      },
+      "id": "format-weather-context",
+      "name": "Format Weather Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 840]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"system_prompt\": \"Είσαι ο Γιώργος. Απάντησε βάσει των δεδομένων καιρού. Δώσε σύντομη πρόβλεψη και πρότεινε ντύσιμο αν χρειάζεται.\",\n  \"temperature\": 0.5,\n  \"max_new_tokens\": 120\n}",
+        "options": {}
+      },
+      "id": "generate-weather",
+      "name": "Generate: Weather",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 840]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://newsapi.org/v2/top-headlines?country=gr&pageSize=5&apiKey={{ $credentials.httpHeaderAuth.value }}",
+        "options": {}
+      },
+      "id": "news-lookup",
+      "name": "News: Get Headlines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "disabled": true,
+      "position": [1380, 980],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_NEWS_KEY",
+          "name": "NewsAPI Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format news headlines as context for LLM\nconst data = $input.first().json;\nconst message = $('Webhook: Receive Message').item.json.body.message;\n\nlet context = 'ΕΙΔΗΣΕΙΣ ΕΛΛΑΔΑΣ:\\n';\nif (data.articles && data.articles.length > 0) {\n  for (const article of data.articles.slice(0, 5)) {\n    const title = article.title || '';\n    const source = article.source?.name || '';\n    const desc = article.description || '';\n    context += `- [${source}] ${title}: ${desc.substring(0, 100)}\\n`;\n  }\n} else {\n  context += 'Δεν βρέθηκαν νέα.\\n';\n}\n\nreturn [{ json: { context, num_articles: data.articles?.length || 0, original_message: message } }];"
+      },
+      "id": "format-news-context",
+      "name": "Format News Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 980]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"system_prompt\": \"Είσαι ο Γιώργος. Σχολίασε τα νέα σαν να τα λες σε φίλο. Σύντομα, με δικό σου σχόλιο.\",\n  \"temperature\": 0.6,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-news",
+      "name": "Generate: News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 980]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/users/{{ $('Webhook: Receive Message').item.json.body.github_user || 'giorgostrox' }}/events?per_page=10",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.httpHeaderAuth.value }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "github-lookup",
+      "name": "GitHub: Get Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "disabled": true,
+      "position": [1380, 1120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_GITHUB_TOKEN",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format GitHub activity as context for LLM\nconst events = $input.first().json;\nconst message = $('Webhook: Receive Message').item.json.body.message;\n\nlet context = 'GITHUB ACTIVITY:\\n';\nconst eventList = Array.isArray(events) ? events : [];\n\nif (eventList.length > 0) {\n  for (const event of eventList.slice(0, 10)) {\n    const type = event.type || '';\n    const repo = event.repo?.name || '';\n    const date = event.created_at ? new Date(event.created_at).toLocaleDateString('el-GR') : '';\n    \n    let detail = '';\n    if (type === 'PushEvent') {\n      const commits = event.payload?.commits?.length || 0;\n      detail = `Push: ${commits} commit(s)`;\n    } else if (type === 'PullRequestEvent') {\n      detail = `PR: ${event.payload?.action || ''} — ${event.payload?.pull_request?.title || ''}`;\n    } else if (type === 'IssuesEvent') {\n      detail = `Issue: ${event.payload?.action || ''} — ${event.payload?.issue?.title || ''}`;\n    } else if (type === 'CreateEvent') {\n      detail = `Created ${event.payload?.ref_type || ''} ${event.payload?.ref || ''}`;\n    } else {\n      detail = type.replace('Event', '');\n    }\n    \n    context += `- ${date} [${repo}] ${detail}\\n`;\n  }\n} else {\n  context += 'Δεν βρέθηκε πρόσφατη δραστηριότητα.\\n';\n}\n\nreturn [{ json: { context, num_events: eventList.length, original_message: message } }];"
+      },
+      "id": "format-github-context",
+      "name": "Format GitHub Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 1120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://jarvis-api:8000/orchestration/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $('Webhook: Receive Message').item.json.body.message }}\",\n  \"context\": \"{{ $json.context || '' }}\",\n  \"system_prompt\": \"Είσαι ο Γιώργος. Απάντησε βάσει της GitHub δραστηριότητάς σου. Αναφέρσου σε repos, commits, PRs.\",\n  \"temperature\": 0.4,\n  \"max_new_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-devops",
+      "name": "Generate: DevOps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1860, 1120]
+    }
+  ],
+  "connections": {
+    "Webhook: Receive Message": {
+      "main": [
+        [
+          {
+            "node": "Toggle Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Toggle Check": {
+      "main": [
+        [
+          {
+            "node": "Twin Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twin Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Twin OFF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Respond: Needs Human",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Identity Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate: Casual",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail: Search Emails",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Calendar: Get Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Weather: Get Current",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "News: Get Headlines",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GitHub: Get Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identity Lookup": {
+      "main": [
+        [
+          {
+            "node": "Generate: Personal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Search": {
+      "main": [
+        [
+          {
+            "node": "Generate: Knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Personal": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Knowledge": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Casual": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Search Emails": {
+      "main": [
+        [
+          {
+            "node": "Format Email Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email Context": {
+      "main": [
+        [
+          {
+            "node": "Generate: Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Memory": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Get Events": {
+      "main": [
+        [
+          {
+            "node": "Format Calendar Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Calendar Context": {
+      "main": [
+        [
+          {
+            "node": "Generate: Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Schedule": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather: Get Current": {
+      "main": [
+        [
+          {
+            "node": "Format Weather Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Weather Context": {
+      "main": [
+        [
+          {
+            "node": "Generate: Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: Weather": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "News: Get Headlines": {
+      "main": [
+        [
+          {
+            "node": "Format News Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format News Context": {
+      "main": [
+        [
+          {
+            "node": "Generate: News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: News": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Activity": {
+      "main": [
+        [
+          {
+            "node": "Format GitHub Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format GitHub Context": {
+      "main": [
+        [
+          {
+            "node": "Generate: DevOps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate: DevOps": {
+      "main": [
+        [
+          {
+            "node": "Merge Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Responses": {
+      "main": [
+        [
+          {
+            "node": "Fact Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fact Check": {
+      "main": [
+        [
+          {
+            "node": "Guardrails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardrails": {
+      "main": [
+        [
+          {
+            "node": "Length Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Length Check": {
+      "main": [
+        [
+          {
+            "node": "Respond: Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "jarvis-george",
+      "id": "1"
+    },
+    {
+      "name": "digital-twin",
+      "id": "2"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "jarvis-george-mac-mini"
+  }
+}
