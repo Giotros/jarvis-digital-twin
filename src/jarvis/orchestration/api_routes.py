@@ -19,6 +19,7 @@ These routes add the granular alternative for n8n workflows.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from datetime import datetime, timezone
@@ -32,6 +33,8 @@ from pydantic import BaseModel, Field
 from jarvis.orchestration.intent_classifier import classify_intent, Intent
 from jarvis.inference.guardrails import Guardrails
 from jarvis.inference.identity import load_identity, identity_to_prompt
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orchestration", tags=["orchestration"])
 
@@ -83,6 +86,11 @@ class RAGResponse(BaseModel):
     context: str
     num_results: int
     results: list[dict] = []
+    #: "ok" | "no_corpus_configured" | "corpus_missing" | "search_failed"
+    #: Never silently empty: downstream nodes and the thesis evaluation
+    #: must be able to distinguish "no relevant match" from "RAG is broken".
+    status: str = "ok"
+    detail: str = ""
 
 
 class ChatMessage(BaseModel):
@@ -184,7 +192,20 @@ def rag_search(req: RAGRequest) -> RAGResponse:
     """Search the RAG corpus for relevant conversation context."""
     corpus_path = os.getenv("JARVIS_CORPUS")
     if not corpus_path:
-        return RAGResponse(context="", num_results=0)
+        logger.error("RAG disabled: JARVIS_CORPUS is not set")
+        return RAGResponse(
+            context="", num_results=0,
+            status="no_corpus_configured",
+            detail="JARVIS_CORPUS environment variable is not set.",
+        )
+
+    if not Path(corpus_path).exists():
+        logger.error("RAG corpus missing at %s — twin will hallucinate", corpus_path)
+        return RAGResponse(
+            context="", num_results=0,
+            status="corpus_missing",
+            detail=f"Corpus file not found: {corpus_path}",
+        )
 
     try:
         from jarvis.rag.context_builder import build_searcher, format_context
@@ -205,9 +226,15 @@ def rag_search(req: RAGRequest) -> RAGResponse:
             context=context,
             num_results=len(results),
             results=result_dicts,
+            status="ok",
         )
     except Exception as exc:
-        return RAGResponse(context="", num_results=0)
+        logger.exception("RAG search failed for query %r", req.query)
+        return RAGResponse(
+            context="", num_results=0,
+            status="search_failed",
+            detail=f"{type(exc).__name__}: {exc}",
+        )
 
 
 @router.post("/generate", response_model=GenerateResponse)

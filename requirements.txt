@@ -6,6 +6,12 @@ fastapi>=0.115
 uvicorn>=0.30
 pydantic>=2.7
 
+# Distributed training orchestration (thesis: "Κατανεμημένη Βελτιστοποίηση").
+# The driver-side API is light; the heavy training deps (torch, peft,
+# bitsandbytes, transformers) are installed in the Colab notebook.
+# Install with: pip install "ray[train]>=2.9"
+# ray[train]>=2.9
+
 # Development / testing
 pytest>=8.0
 ruff>=0.5
