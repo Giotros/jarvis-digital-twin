@@ -114,6 +114,37 @@ _NAME_ENDINGS: tuple[str, ...] = (
     "",                                            # bare stem
 )
 
+#: Greek has given names that are *also* calendar terms and place names:
+#: Παρασκευή is both "Friday" and a woman's name, Κυριακή both "Sunday" and a
+#: name, Ιούλιος both "July" and a name, and Γιαννιτσά is a town built on the
+#: stem of Γιάννης. Redacting these destroys ordinary scheduling vocabulary —
+#: an early version of this module deleted 268 instances of "Παρασκευή" and
+#: 126 of "Κυριακή" from the corpus before the loss was noticed.
+#:
+#: Inflected forms are listed explicitly rather than derived, because deriving
+#: them would re-introduce the same over-matching this set exists to prevent.
+#:
+#: Known limitation: a real person actually named Παρασκευή or Κυριακή will not
+#: be redacted by *this* rule. The full-name rule in ``patterns.py`` still
+#: catches "Παρασκευή Παπαδοπούλου", so the pipeline degrades rather than
+#: fails — but a bare first-name mention of such a person survives. Without
+#: sentence-level context there is no way to tell the day from the person, and
+#: destroying every scheduling message is the worse trade.
+CALENDAR_AND_PLACES: frozenset[str] = _normalised_set({
+    # days that are also names
+    "παρασκευη", "παρασκευης", "παρασκευες",
+    "κυριακη", "κυριακης", "κυριακες",
+    # months that are also names
+    "ιουλιος", "ιουλιου", "ιουλιο", "ιουλη",
+    "ιουνιος", "ιουνιου", "ιουνιο",
+    "μαρτιος", "μαρτιου", "μαρτιο",
+    "αυγουστος", "αυγουστου", "αυγουστο",
+    # place names derived from given-name stems
+    "γιαννιτσα", "γιαννιτσων", "γιαννιτσας",
+    "μαρκοπουλο", "μαρκοπουλου",
+    "αγιαννη", "αγιαννης",
+})
+
 #: Ordinary vocabulary that collides with a name stem. Never redacted.
 #: This blocklist is corpus-specific. If the data source changes, re-audit it:
 #: a word that is ordinary vocabulary in one corpus may be a person in another.
@@ -190,6 +221,8 @@ def find_given_names(
     spans: list[tuple[int, int, str]] = []
     for match in _NAME_RE.finditer(normalised):
         word = match.group(0)
+        if word in CALENDAR_AND_PLACES:
+            continue
         if word in NAME_LIKE_COMMON_WORDS:
             continue
         if any(word.startswith(s) for s in self_norm):

@@ -91,6 +91,35 @@ def test_common_vocabulary_not_redacted(text):
     assert redact_given_names(text)[1] == 0
 
 
+@pytest.mark.parametrize("word", [
+    # Days that are also given names — an early version deleted 268 instances
+    # of "Παρασκευή" and 126 of "Κυριακή" from the corpus.
+    "Παρασκευή", "Παρασκευής", "Κυριακή", "Κυριακής",
+    # Months that are also given names
+    "Ιούλιος", "Ιούλιο", "Ιουλίου", "Μάρτιος", "Αύγουστος",
+    # Places built on given-name stems
+    "Γιαννιτσά", "Μαρκόπουλο",
+])
+def test_calendar_and_places_survive(word):
+    """Scheduling vocabulary must not be destroyed by name redaction."""
+    assert redact_given_names(word)[1] == 0, f"{word} was wrongly redacted"
+
+
+@pytest.mark.parametrize("text", [
+    "Θα σε δω Παρασκευή",
+    "τον Ιούλιο φεύγω",
+    "είμαι από τα Γιαννιτσά Πέλλας",
+])
+def test_calendar_words_in_context(text):
+    assert redact_given_names(text)[1] == 0
+
+
+def test_male_names_sharing_calendar_stems_still_redacted():
+    """Κυριάκος and Παρασκευάς are people, not days — the guard is form-specific."""
+    assert redact_given_names("Κυριάκος")[1] == 1
+    assert redact_given_names("Παρασκευάς")[1] == 1
+
+
 @pytest.mark.parametrize("text", [
     "ο Γιώργος είμαι εγώ",
     "George: θα δω",
