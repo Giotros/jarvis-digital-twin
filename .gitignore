@@ -11,7 +11,8 @@ persona_chat_training_data*.json
 config/contacts.txt
 
 # Models / adapters (large binaries live on Drive, not git)
-models/
+models/*
+!models/Modelfile
 *.safetensors
 *.gguf
 checkpoints/
