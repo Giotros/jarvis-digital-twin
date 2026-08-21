@@ -323,25 +323,41 @@ def train_loop(config):
     ))
     model.print_trainable_parameters()
 
+    # TRL renamed SFTConfig's sequence-length argument from max_seq_length to
+    # max_length, and made dataset_text_field optional, across recent releases.
+    # Colab resolves the version at install time, so probe the signature rather
+    # than pinning a version that may vanish or conflict with transformers.
+    import inspect
+    sft_params = inspect.signature(SFTConfig.__init__).parameters
+
+    sft_kwargs = dict(
+        output_dir=config["ckpt_dir"],
+        num_train_epochs=config["num_epochs"],
+        per_device_train_batch_size=config["batch_size"],
+        gradient_accumulation_steps=config["grad_accum"],
+        learning_rate=config["learning_rate"],
+        warmup_ratio=0.03,
+        logging_steps=10,
+        save_steps=config["save_steps"],
+        save_total_limit=2,
+        bf16=True,
+        report_to=[],
+        seed=config["seed"],
+    )
+    if "max_length" in sft_params:
+        sft_kwargs["max_length"] = config["max_seq_length"]
+    elif "max_seq_length" in sft_params:
+        sft_kwargs["max_seq_length"] = config["max_seq_length"]
+    if "dataset_text_field" in sft_params:
+        sft_kwargs["dataset_text_field"] = "text"
+
+    print(f"TRL SFTConfig: χρησιμοποιώ "
+          f"{'max_length' if 'max_length' in sft_params else 'max_seq_length'}")
+
     trainer = SFTTrainer(
         model=model,
         train_dataset=Dataset.from_dict({"text": config["texts"]}),
-        args=SFTConfig(
-            output_dir=config["ckpt_dir"],
-            num_train_epochs=config["num_epochs"],
-            per_device_train_batch_size=config["batch_size"],
-            gradient_accumulation_steps=config["grad_accum"],
-            learning_rate=config["learning_rate"],
-            max_seq_length=config["max_seq_length"],
-            warmup_ratio=0.03,
-            logging_steps=10,
-            save_steps=config["save_steps"],
-            save_total_limit=2,
-            bf16=True,
-            report_to=[],
-            seed=config["seed"],
-            dataset_text_field="text",
-        ),
+        args=SFTConfig(**sft_kwargs),
     )
     result = trainer.train()
 
