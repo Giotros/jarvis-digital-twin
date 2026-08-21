@@ -1,6 +1,6 @@
 # Jarvis George — Architecting Autonomous Digital Twins
 
-Diploma thesis, University of Peloponnese · George Trochidis · Supervisor: Παναγιώτης Ζέρβας
+Diploma thesis, University of Peloponnese · George Trochidis
 
 An autonomous digital twin that replicates a specific person's communication style using
 **Krikri-8B (Greek-native LLM) + QLoRA fine-tuning + hybrid RAG + n8n orchestration**,

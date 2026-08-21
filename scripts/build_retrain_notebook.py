@@ -33,8 +33,7 @@ def code(text: str) -> dict:
 CELLS = [
     md("""# Jarvis George — Retrain (v4, PII-clean) + GGUF Export
 
-**Διπλωματική:** Architecting Autonomous Digital Twins — Παν. Πελοποννήσου
-**Επιβλέπων:** Παναγιώτης Ζέρβας
+**Διπλωματική:** Architecting Autonomous Digital Twins — Παν. Πελοποννήσου, ΗΜΜΥ
 
 Αυτό το notebook τρέχει **μία φορά** και βγάζει το τελικό μοντέλο:
 
