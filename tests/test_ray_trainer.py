@@ -9,6 +9,7 @@ the module is written so the pure logic is testable without them.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -46,8 +47,28 @@ def test_config_serialises_for_ray():
     cfg = RayTrainingConfig(corpus_path="x.json")
     d = cfg.to_dict()
     json.dumps(d)  # must not raise
-    assert d["lora"]["r"] == 16
+    assert d["lora"]["r"] == 64
     assert d["effective_batch_size"] == 16
+
+
+def test_defaults_match_the_shipped_adapter():
+    """The checked-in configuration must reproduce the measured model.
+
+    The defaults here said r=16 and alpha=32 while the adapter the thesis
+    describes was trained with 64 and 128 — values set in the notebook and
+    never reflected back into the code. Anyone re-running this file would
+    have produced a different model from the one that was evaluated, and
+    nothing would have signalled the difference.
+    """
+    adapter = Path("models/adapter/adapter_config.json")
+    if not adapter.exists():
+        pytest.skip("adapter not present in this checkout")
+
+    shipped = json.loads(adapter.read_text(encoding="utf-8"))
+    lora = LoRAConfig()
+    assert lora.r == shipped["r"]
+    assert lora.lora_alpha == shipped["lora_alpha"]
+    assert set(lora.target_modules) == set(shipped["target_modules"])
 
 
 def test_lora_peft_kwargs_shape():

@@ -6,7 +6,7 @@ at the university — lifted from 34 occurrences in a corpus the pipeline had
 passed as clean.
 
 Half these tests are about *not* redacting. Over-redaction is the failure
-this package has already made once, at the cost of 268 instances of
+this package has already made once, at the cost of 129 instances of
 "Παρασκευή", and surname endings collide with ordinary Greek far more often
 than given names do.
 """

@@ -59,7 +59,7 @@ def _normalised_set(words: Iterable[str]) -> frozenset[str]:
 #: Deliberately excludes -ας, -ης and -ος on their own. Those are the endings
 #: of ordinary nouns and adjectives in their thousands, and matching them
 #: would delete half the corpus — the over-redaction failure that removed
-#: 268 instances of "Παρασκευή" the first time round, at a much larger scale.
+#: 129 instances of "Παρασκευή" the first time round, at a much larger scale.
 #: Four endings were removed after measuring on the corpus, because each was
 #: overwhelmingly a common noun rather than a name:
 #:   -εση    πίεση, σχέση, εξαίρεση, σύνδεση, ανάθεση
@@ -160,7 +160,7 @@ _NOT_SURNAMES: frozenset[str] = _normalised_set({
 #:
 #: Greek toponyms and family names share endings constantly — Μαρκόπουλο is
 #: a town, Μαρκόπουλος a person. Deleting the town from someone's messages
-#: is the same class of damage as deleting "Παρασκευή", which cost 268
+#: is the same class of damage as deleting "Παρασκευή", which cost 129
 #: occurrences the first time this pipeline over-reached.
 _PLACE_NAMES: frozenset[str] = _normalised_set({
     "μαρκοπουλο", "μαρκοπουλου", "γιαννιτσα", "γιαννιτσων",

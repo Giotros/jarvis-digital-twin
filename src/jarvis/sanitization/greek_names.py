@@ -118,7 +118,7 @@ _NAME_ENDINGS: tuple[str, ...] = (
 #: Παρασκευή is both "Friday" and a woman's name, Κυριακή both "Sunday" and a
 #: name, Ιούλιος both "July" and a name, and Γιαννιτσά is a town built on the
 #: stem of Γιάννης. Redacting these destroys ordinary scheduling vocabulary —
-#: an early version of this module deleted 268 instances of "Παρασκευή" and
+#: an early version of this module deleted 129 instances of "Παρασκευή" and
 #: 126 of "Κυριακή" from the corpus before the loss was noticed.
 #:
 #: Inflected forms are listed explicitly rather than derived, because deriving

@@ -63,8 +63,16 @@ class LoRAConfig:
     comparable with the existing single-process baseline.
     """
 
-    r: int = 16
-    lora_alpha: int = 32
+    # These are the values the shipped adapter was actually trained with,
+    # read back from models/adapter/adapter_config.json.
+    #
+    # They were 16 and 32 here while the trained model used 64 and 128 —
+    # library defaults that were overridden in the notebook and never
+    # reflected back into the code. Anyone re-running this file would have
+    # produced a different model from the one the thesis describes and
+    # measures, and nothing would have signalled the difference.
+    r: int = 64
+    lora_alpha: int = 128
     lora_dropout: float = 0.05
     bias: str = "none"
     task_type: str = "CAUSAL_LM"

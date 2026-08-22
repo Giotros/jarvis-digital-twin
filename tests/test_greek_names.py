@@ -92,7 +92,7 @@ def test_common_vocabulary_not_redacted(text):
 
 
 @pytest.mark.parametrize("word", [
-    # Days that are also given names — an early version deleted 268 instances
+    # Days that are also given names — an early version deleted 129 instances
     # of "Παρασκευή" and 126 of "Κυριακή" from the corpus.
     "Παρασκευή", "Παρασκευής", "Κυριακή", "Κυριακής",
     # Months that are also given names
