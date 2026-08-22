@@ -62,3 +62,11 @@ config/golden_examples.yaml
 .commit-message.txt
 config/surnames.txt
 docker-compose.yml.bak
+
+# Κείμενο διπλωματικής — δική του πνευματική εργασία, όχι κώδικας.
+# Το repo είναι δημόσιο για να φαίνεται η υλοποίηση, όχι το κείμενο που
+# βαθμολογείται. Τα αποτελέσματα μετρήσεων μένουν ορατά ως τεκμηρίωση
+# του κώδικα· τα κεφάλαια και η βιβλιογραφία όχι.
+docs/bibliography.md
+docs/chapter_*.md
+docs/thesis_skeleton.md
