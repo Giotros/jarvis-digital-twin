@@ -283,8 +283,39 @@ class Guardrails:
         cleaned, count = redact_surnames(text, placeholder="")
         if not count:
             return text
-        cleaned = re.sub(r"\s+([,.;!?·])", r"\1", cleaned)
-        return re.sub(r"\s{2,}", " ", cleaned).strip()
+        return self._close_gap(cleaned)
+
+    #: Articles and prepositions that become ungrammatical once the noun they
+    #: govern is deleted.
+    #:
+    #: Removing the name alone produced "και ο είναι πολύ καλός καθηγητής"
+    #: and "το δουλεύω με τον από τη σχολή" in live output — sentences a
+    #: reader stops at. A privacy filter that leaves visibly broken Greek
+    #: draws attention to exactly the sentence it was trying to make
+    #: unremarkable.
+    _ORPHAN_ARTICLE = re.compile(
+        r"(?:\b(?:στον|στην|στο|στου|στης|από\s+τον|απο\s+τον|με\s+τον|"
+        r"με\s+την|για\s+τον|για\s+την)|\b(?:ο|η|το|τον|την|του|της|τους|τις))"
+        r"\s+(?=[,.;!?·]|$|\s)",
+        re.IGNORECASE,
+    )
+
+    def _close_gap(self, text: str) -> str:
+        """Tidy the hole a deleted word leaves behind.
+
+        Runs repeatedly because deletions cascade: "με τον Παπαδόπουλο" first
+        loses the name, then the article, and the preposition only becomes
+        orphaned once the article is gone.
+        """
+        previous = None
+        cleaned = text
+        while cleaned != previous:
+            previous = cleaned
+            cleaned = self._ORPHAN_ARTICLE.sub("", cleaned)
+            cleaned = re.sub(r"\s+([,.;!?·])", r"\1", cleaned)
+            cleaned = re.sub(r"\s{2,}", " ", cleaned)
+            cleaned = re.sub(r"([,·])\s*([,.;!?·])", r"\2", cleaned)
+        return re.sub(r"^[\s,·]+", "", cleaned).strip()
 
     def enforce_register(self, text: str, register: str) -> str:
         """Deprecated alias for :meth:`sanitise_output`."""

@@ -246,3 +246,50 @@ def test_process_without_register_is_unchanged_behaviour():
     g = Guardrails()
     text = "Καλά φιλαράκι μου"
     assert g.process(text) == g.process(text, register="")
+
+
+# ── Orphaned articles (regression from the surname filter) ──────
+
+@pytest.mark.parametrize("text,forbidden", [
+    ("μάθαμε πράγματα και ο Ταμπακάς είναι καλός καθηγητής", "και ο ει"),
+    ("Το δουλεύω ακόμα με τον Ζέρβα από τη σχολή", "με τον από"),
+    ("Περιμένω να με ενημερώσει η Παπαδοπούλου πότε", "ει η πότε"),
+    ("καλή φάση, το έχουμε με τον Κούγια", "με τον"),
+])
+def test_deleting_a_surname_does_not_strand_its_article(text, forbidden):
+    """Removing the noun alone leaves ungrammatical Greek.
+
+    Live output contained "και ο είναι πολύ καλός καθηγητής" and "το δουλεύω
+    με τον από τη σχολή". A privacy filter that leaves visibly broken
+    sentences draws attention to precisely the sentence it was trying to
+    make unremarkable.
+    """
+    out = Guardrails().sanitise_output(text)
+    assert forbidden not in out
+
+
+def test_cascading_deletions_are_resolved():
+    """"με τον Παπαδόπουλο" loses three tokens, one at a time.
+
+    The preposition only becomes orphaned after the article goes, so a
+    single pass is not enough.
+    """
+    out = Guardrails().sanitise_output("Μίλησα με τον Παπαδόπουλο χθες.")
+    assert "με τον" not in out
+    assert "Μίλησα" in out and "χθες" in out
+
+
+@pytest.mark.parametrize("text", [
+    "Ο καθηγητής είναι πολύ καλός",
+    "Το δουλεύω ακόμα με τον συνάδελφο από τη σχολή",
+    "Η εργασία μου είναι έτοιμη",
+    "Πάω στην Τρίπολη το Σάββατο",
+])
+def test_sentences_without_surnames_are_untouched(text):
+    """The article stripper runs only where a name was actually removed."""
+    assert Guardrails().sanitise_output(text) == text
+
+
+def test_no_double_punctuation_after_removal():
+    out = Guardrails().sanitise_output("Ήρθε ο Ιωαννίδης, και ο Παπαδόπουλος.")
+    assert ",," not in out and " ," not in out and ".." not in out
