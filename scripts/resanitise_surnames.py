@@ -40,23 +40,51 @@ from jarvis.sanitization.greek_surnames import (  # noqa: E402
 )
 
 #: Text fields in a corpus record. Every one is fed to the model, so every
-#: one has to be clean — the first sanitiser missed a field and the omission
-#: was invisible until inference.
+#: one has to be cleaned — the first sanitiser missed a field and the
+#: omission was invisible until inference.
 _TEXT_FIELDS = (
     "instruction_clean", "response_clean", "formatted_prompt",
     "instruction", "response", "conversation_with",
 )
 
+#: Fields to *count* in. Deliberately narrower than the set to clean.
+#:
+#: ``formatted_prompt`` is a concatenation of the other two, so every
+#: redaction appears in it a second time. Counting across all fields doubles
+#: the figures — which is how "592 phone numbers" and "1,187 surnames"
+#: entered the project's notes when the true counts are 296 and 589. The
+#: cleaning must still cover the duplicate; only the arithmetic must not.
+_COUNT_FIELDS = ("instruction_clean", "response_clean")
+
 PLACEHOLDER = "[SURNAME]"
 
 
-def scan(rows: list[dict]) -> collections.Counter:
+def scan(rows: list[dict], fields: tuple[str, ...] = _COUNT_FIELDS
+         ) -> collections.Counter:
+    """Count surnames, by default without double-counting.
+
+    ``--check`` passes the full field set: for a gate, finding a name in the
+    duplicated field still means the file is contaminated, and a missed
+    duplicate would let a dirty corpus through.
+    """
     hits: collections.Counter = collections.Counter()
     for row in rows:
-        for field in _TEXT_FIELDS:
+        for field in fields:
             for name in find_surnames(row.get(field) or ""):
                 hits[name.lower()] += 1
     return hits
+
+
+def affected_records(rows: list[dict]) -> int:
+    """Records containing at least one surname — the figure to report.
+
+    Occurrences overstate the reach of a leak when one message names the
+    same person four times.
+    """
+    return sum(
+        1 for row in rows
+        if any(find_surnames(row.get(f) or "") for f in _COUNT_FIELDS)
+    )
 
 
 def clean(rows: list[dict]) -> tuple[list[dict], int]:
@@ -93,7 +121,7 @@ def main() -> None:
     if args.check:
         path = ROOT / args.check
         rows = json.load(open(path, encoding="utf-8"))
-        hits = scan(rows)
+        hits = scan(rows, _TEXT_FIELDS)
         if hits:
             print(f"✗ {path.name}: {sum(hits.values())} επώνυμα σε "
                   f"{len(hits)} μοναδικές μορφές")
@@ -112,9 +140,13 @@ def main() -> None:
     rows = json.load(open(corpus_path, encoding="utf-8"))
     hits = scan(rows)
 
+    affected = affected_records(rows)
     print(f"{corpus_path.name}: {len(rows)} εγγραφές")
-    print(f"επώνυμα προς αφαίρεση: {sum(hits.values())} εμφανίσεις, "
-          f"{len(hits)} μοναδικές μορφές\n")
+    print(f"επώνυμα προς αφαίρεση: {sum(hits.values())} εμφανίσεις σε "
+          f"{affected} εγγραφές ({affected / len(rows):.1%}), "
+          f"{len(hits)} μοναδικές μορφές")
+    print("(μετρημένα σε μοναδικά πεδία — το formatted_prompt επαναλαμβάνει "
+          "τα άλλα δύο)\n")
     for name, n in hits.most_common(15):
         print(f"  {n:4}  {name}")
     if len(hits) > 15:
@@ -129,7 +161,7 @@ def main() -> None:
     # Verify on the output, not on the intention. The sanitiser is the thing
     # under test here, and a pass that reports success without re-reading
     # what it wrote is how v4 came to be trusted.
-    remaining = scan(cleaned_rows)
+    remaining = scan(cleaned_rows, _TEXT_FIELDS)
     if remaining:
         print(f"\n✗ Μετά τον καθαρισμό απομένουν {sum(remaining.values())}. "
               "Δεν γράφτηκε αρχείο.")
@@ -139,7 +171,7 @@ def main() -> None:
     out_path.write_text(
         json.dumps(cleaned_rows, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    print(f"\n✓ {replaced} αντικαταστάσεις → {out_path.name}")
+    print(f"\n✓ {replaced} αντικαταστάσεις σε όλα τα πεδία → {out_path.name}")
     print(f"  επαλήθευση στο γραμμένο αρχείο: 0 επώνυμα")
     print("\nΕπόμενο: δείξε το training και το JARVIS_CORPUS στο v5.")
     print("Το φίλτρο εξόδου καλύπτει· μόνο η επανεκπαίδευση αφαιρεί.")
