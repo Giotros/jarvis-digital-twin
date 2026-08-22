@@ -66,7 +66,32 @@ print(n)
         bad "$LEAKS ονόματα τρίτων στο corpus"
     fi
 fi
+# Επώνυμα. Ξεχωριστός έλεγχος από τα βαφτιστικά, γιατί είναι ξεχωριστός
+# ανιχνευτής — και το κενό φάνηκε μόνο όταν το εκπαιδευμένο μοντέλο
+# εξέφερε δύο πραγματικά επώνυμα σε αξιολόγηση.
+if [[ -f "$CORPUS_LOCAL" ]]; then
+    SURNAMES=$(PYTHONPATH=src python3 -c "
+import json,sys
+try:
+    from jarvis.sanitization.greek_surnames import find_surnames
+except Exception:
+    print('SKIP'); sys.exit()
+r = json.load(open('$CORPUS_LOCAL', encoding='utf-8'))
+n = sum(len(find_surnames(x.get(f) or ''))
+        for x in r for f in ('instruction_clean','response_clean','formatted_prompt'))
+print(n)
+" 2>/dev/null)
+    if [[ "$SURNAMES" == "0" ]]; then
+        ok "μηδέν επώνυμα τρίτων στο corpus"
+    elif [[ "$SURNAMES" == "SKIP" ]]; then
+        warn "δεν μπόρεσα να ελέγξω επώνυμα"
+    else
+        bad "$SURNAMES επώνυμα τρίτων — τρέξε scripts/resanitise_surnames.py --write"
+    fi
+fi
+
 git check-ignore -q data/ 2>/dev/null && ok "data/ εκτός git" || warn "το data/ ίσως μπαίνει στο git"
+git ls-files 2>/dev/null | grep -q "config/surnames.txt" && bad "surnames.txt ΕΙΝΑΙ στο git" || ok "surnames.txt εκτός git"
 git ls-files 2>/dev/null | grep -q "config/identity.yaml" && bad "identity.yaml ΕΙΝΑΙ στο git" || ok "identity.yaml εκτός git"
 
 # ── 3. Υπηρεσίες ────────────────────────────────────────────

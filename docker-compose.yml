@@ -108,7 +108,7 @@ services:
       - JARVIS_MODEL=jarvis
       - JARVIS_FALLBACK_MODEL=jarvis
       - JARVIS_CHROMA_URL=http://chromadb:8000
-      - JARVIS_CORPUS=/app/data/jarvis_training_data_v4.json
+      - JARVIS_CORPUS=/app/data/jarvis_training_data_v5.json
     volumes:
       - ./config:/app/config:ro
       - ./data:/app/data

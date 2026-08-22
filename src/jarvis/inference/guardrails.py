@@ -261,9 +261,30 @@ class Guardrails:
         if not text:
             return text
         text = self._strip_anonymisation_placeholders(text)
+        text = self._strip_surnames(text)
         if register in self.FORMAL_REGISTERS:
             text = self._strip_familiar_vocatives(text)
         return text
+
+    def _strip_surnames(self, text: str) -> str:
+        """Last line of defence against a third party's surname in the output.
+
+        The corpus was believed clean and was not: two real surnames survived
+        34 occurrences of sanitisation, were trained into the adapter, and
+        came out of the deployed model when it was asked about a meeting.
+        Retraining removes them from the weights, but retraining takes a day
+        and the presentation does not wait for it.
+
+        Cheap enough to run on every reply, and it costs nothing when the
+        gazetteer is empty.
+        """
+        from jarvis.sanitization.greek_surnames import redact_surnames
+
+        cleaned, count = redact_surnames(text, placeholder="")
+        if not count:
+            return text
+        cleaned = re.sub(r"\s+([,.;!?·])", r"\1", cleaned)
+        return re.sub(r"\s{2,}", " ", cleaned).strip()
 
     def enforce_register(self, text: str, register: str) -> str:
         """Deprecated alias for :meth:`sanitise_output`."""

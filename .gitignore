@@ -60,3 +60,5 @@ config/golden_examples.yaml
 # registration number and a signature.
 *.pdf
 .commit-message.txt
+config/surnames.txt
+docker-compose.yml.bak

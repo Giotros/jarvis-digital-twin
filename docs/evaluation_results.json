@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-22T14:57:17.365023+00:00",
+ "generated_at": "2026-08-22T15:02:33.821990+00:00",
  "probes": [
   "Τι κάνεις; Όλα καλά;",
   "Θα έρθεις τελικά το Σάββατο;",
@@ -25,48 +25,48 @@
   "n_responses": 30,
   "naturalness": {
    "style_profile": {
-    "mean_words_per_response": 18.666666666666668,
-    "mean_words_per_sentence": 13.82716049382716,
-    "mean_sentences_per_response": 1.3703703703703705,
-    "type_token_ratio": 0.4880952380952381,
-    "greek_ratio": 0.9920671955202987,
-    "question_rate": 0.1111111111111111,
-    "exclamation_rate": 0.037037037037037035,
-    "first_person_rate": 0.8518518518518519,
+    "mean_words_per_response": 13.083333333333334,
+    "mean_words_per_sentence": 9.13888888888889,
+    "mean_sentences_per_response": 1.4166666666666667,
+    "type_token_ratio": 0.5477707006369427,
+    "greek_ratio": 0.9916839916839917,
+    "question_rate": 0.20833333333333334,
+    "exclamation_rate": 0.125,
+    "first_person_rate": 0.7083333333333334,
     "assistant_tell_rate": 0.0,
-    "n_samples": 27
+    "n_samples": 24
    },
-   "distinct_1": 0.4881,
-   "distinct_2": 0.9266,
+   "distinct_1": 0.5478,
+   "distinct_2": 0.9345,
    "mean_repetition_rate": 0.0,
-   "mean_pairwise_similarity": 0.0657,
-   "style_distance_to_reference": 0.1654,
+   "mean_pairwise_similarity": 0.0577,
+   "style_distance_to_reference": 0.1031,
    "style_breakdown": {
-    "mean_words_per_response": 10.614,
-    "mean_words_per_sentence": 7.6693,
-    "mean_sentences_per_response": 0.2125,
-    "type_token_ratio": 0.257,
-    "greek_ratio": 0.0685,
-    "question_rate": 0.152,
-    "exclamation_rate": 0.037,
-    "first_person_rate": 0.3782,
+    "mean_words_per_response": 5.0307,
+    "mean_words_per_sentence": 2.981,
+    "mean_sentences_per_response": 0.2588,
+    "type_token_ratio": 0.1973,
+    "greek_ratio": 0.0681,
+    "question_rate": 0.0548,
+    "exclamation_rate": 0.125,
+    "first_person_rate": 0.2346,
     "assistant_tell_rate": 0.0
    }
   },
   "reliability": {
-   "refusal_rate": 0.0333,
+   "refusal_rate": 0.0,
    "assistant_drift_rate": 0.0,
-   "empty_response_rate": 0.1
+   "empty_response_rate": 0.2
   },
   "performance": {
-   "mean_latency_s": 1.894,
-   "median_latency_s": 1.608,
-   "p95_latency_s": 4.978
+   "mean_latency_s": 1.159,
+   "median_latency_s": 0.973,
+   "p95_latency_s": 2.624
   },
   "accuracy": {
    "mean_grounding_score": 0.0,
    "ungrounded_rate": 1.0,
-   "n_groundable": 5,
+   "n_groundable": 4,
    "n_total": 30
   }
  },
@@ -76,7 +76,7 @@
    "probe": "Τι κάνεις; Όλα καλά;",
    "reply": "",
    "intent": "error",
-   "seconds": 0.09,
+   "seconds": 0.04,
    "context_chars": 0,
    "groundable": false
   },
@@ -92,223 +92,232 @@
   {
    "run": 1,
    "probe": "Μπορείς να μου στείλεις την αναφορά μέχρι αύριο;",
-   "reply": "Ναι θα στα στειλω σήμερα το μεσημερι",
-   "intent": "casual",
-   "seconds": 6.76,
+   "reply": "",
+   "intent": "error",
+   "seconds": 0.02,
    "context_chars": 0,
    "groundable": false
   },
   {
    "run": 1,
    "probe": "Πώς σου φάνηκε η συνάντηση σήμερα;",
-   "reply": "Εντάξει ήταν συ δεν ειχε κάτι ιδιαιτερο να συζητησουμε απλά με ρωτησε για την εργασια του ταμπακα πού εκανα και τι θα ελεγα αν μου ζητουσε καποιος αλλος το ιδιο πραμα.",
-   "intent": "schedule",
-   "seconds": 4.98,
-   "context_chars": 465,
-   "groundable": true
+   "reply": "",
+   "intent": "error",
+   "seconds": 0.02,
+   "context_chars": 0,
+   "groundable": false
   },
   {
    "run": 1,
    "probe": "Έχεις κανένα νέο για το project;",
-   "reply": "Όχι ακόμα φίλε...",
+   "reply": "",
+   "intent": "error",
+   "seconds": 0.04,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 1,
+   "probe": "Τι λες να φάμε το βράδυ;",
+   "reply": "Φάγαμε πολύ σήμερα μάλλον θα πάμε για μπύρες καλύτερα",
+   "intent": "casual",
+   "seconds": 1.12,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 1,
+   "probe": "Can you join the call at 3pm tomorrow?",
+   "reply": "Ναι εννοείται να συμμετάσχω στην κλήση αύριο στις 15:00. Δεν έχω κάποια δέσμευση εκείνη την ώρα.",
+   "intent": "casual",
+   "seconds": 1.71,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 1,
+   "probe": "Ευχαριστώ πολύ για τη βοήθεια χθες!",
+   "reply": "Πραγματικά τίποτα συ",
+   "intent": "casual",
+   "seconds": 0.64,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 1,
+   "probe": "Πότε μπορούμε να τα πούμε από κοντά;",
+   "reply": "Εγώ δουλεύω μέχρι τις 2 σήμερα και αύριο έχω εξεταστική το πρωί οπότε θα φύγω λίγο πιο νωρίς για σπίτι. Κατά τις 6 μπορείς αν θες να βρεθούμε στο καφέ απέναντι από τη σχολή?",
+   "intent": "casual",
+   "seconds": 2.62,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 1,
+   "probe": "Στείλε μου όταν φτάσεις σπίτι.",
+   "reply": "",
    "intent": "casual",
    "seconds": 0.6,
    "context_chars": 0,
    "groundable": false
   },
   {
-   "run": 1,
-   "probe": "Τι λες να φάμε το βράδυ;",
-   "reply": "Οτι ναναι συ εγώ έχω παρει 3 κιλα απο την φαση πού με αφησε η κολλητη μου και ειμαι στα χαμενα..",
+   "run": 2,
+   "probe": "Τι κάνεις; Όλα καλά;",
+   "reply": "Κ εγώ καλά ειμαι ευχαριστώ! Εσύ?",
    "intent": "casual",
-   "seconds": 2.12,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 1,
-   "probe": "Can you join the call at 3pm tomorrow?",
-   "reply": "Ναι εννοείται μπορώ να συμμετάσχω στο ραντεβού στις 15:00 αύριο. Απλά δεν ξέρω αν θα έχω διαθέσιμο ίντερνετ εκείνη την ώρα (θα το τσεκάρω και σε ενημερώνω λίγο πριν)",
-   "intent": "casual",
-   "seconds": 2.98,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 1,
-   "probe": "Ευχαριστώ πολύ για τη βοήθεια χθες!",
-   "reply": "Ωραία πού τα είπαμε και σήμερα να δούμε πώς θα πάει με τις εργασίες, καλή αρχή σου εύχομαι στην εξεταστικη George: κι εγώ σε ευχαριστώ πολύ φίλε",
-   "intent": "casual",
-   "seconds": 2.29,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 1,
-   "probe": "Πότε μπορούμε να τα πούμε από κοντά;",
-   "reply": "Εργάζομαι απόγευμα σήμερα και αύριο το πρωί μέχρι τις 12 έχω μάθημα στο πανεπιστήμιο. Από κει πέρα μπορώ άνετα να βρεθούμε. Αν θες πεσμου μια βολική ώρα για σένα και κανονίζουμε.",
-   "intent": "casual",
-   "seconds": 2.56,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 1,
-   "probe": "Στείλε μου όταν φτάσεις σπίτι.",
-   "reply": "Θα στείλω στην ότι είναι οκ να φύγει για δουλειά ο γιος της και με ενημέρωσε πώς θα έρθει σε 10 λεπτα στο σπιτι",
-   "intent": "casual",
-   "seconds": 1.96,
+   "seconds": 0.95,
    "context_chars": 0,
    "groundable": false
   },
   {
    "run": 2,
+   "probe": "Θα έρθεις τελικά το Σάββατο;",
+   "reply": "Ναι εννοείται θα έρθω",
+   "intent": "schedule",
+   "seconds": 1.17,
+   "context_chars": 315,
+   "groundable": true
+  },
+  {
+   "run": 2,
+   "probe": "Μπορείς να μου στείλεις την αναφορά μέχρι αύριο;",
+   "reply": "Ναι εννοείται μπορώ και το κάνω σήμερα κιόλας αν θέλετε να σας σταλεί νωρίτερα από αύριο φυσικά",
+   "intent": "casual",
+   "seconds": 1.38,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Πώς σου φάνηκε η συνάντηση σήμερα;",
+   "reply": "Ωραία ήτανε, μιλήσαμε αρκετά για το πώς θα προχωρήσουμε με την εργασία του Ταμπακά και μου έδωσε κάποιες ιδέες πού πιστεύω μπορούν να βοηθήσουν πολύ στην υλοποίηση της εργασίας.",
+   "intent": "schedule",
+   "seconds": 2.85,
+   "context_chars": 465,
+   "groundable": true
+  },
+  {
+   "run": 2,
+   "probe": "Έχεις κανένα νέο για το project;",
+   "reply": "Καλησπέρα σας, τι έγινε με την εργασία του Συρμακέση? Είναι έτοιμη η βάση δεδομένων πού είχαμε πει να φτιάξουμε ή θα προχωρήσουμε σε κάποια άλλη δομή? Ευχαριστώ πολύ!",
+   "intent": "casual",
+   "seconds": 2.54,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Τι λες να φάμε το βράδυ;",
+   "reply": "Μάλλον θα κάνω λίγο ψάρι στο φούρνο και μπρόκολο βραστό για βραδινό. Τι έφαγες σήμερα αν επιτρέπεται;",
+   "intent": "casual",
+   "seconds": 1.87,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Can you join the call at 3pm tomorrow?",
+   "reply": "Ναι, θα το κάνω αν είναι οκ για σενα αυτό.",
+   "intent": "casual",
+   "seconds": 0.92,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Ευχαριστώ πολύ για τη βοήθεια χθες!",
+   "reply": "Τίποτα φίλε πραγματικά χαίρομαι πού μπόρεσα να βοηθήσω",
+   "intent": "casual",
+   "seconds": 1.1,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Πότε μπορούμε να τα πούμε από κοντά;",
+   "reply": "Από Δευτέρα αν θέλεις, κατά τις 6-7 το απόγευμα; Θα είμαι σπίτι και θα μπορώ να μιλήσουμε χωρίς προβλήματα σύνδεσης",
+   "intent": "casual",
+   "seconds": 1.67,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 2,
+   "probe": "Στείλε μου όταν φτάσεις σπίτι.",
+   "reply": "Έφτασα πριν από λίγο στο σπιτάκι μου στην Τρίπολη και έχω ξεκινήσει να κάνω δουλειές. Αν δεν προλάβω θα στείλω αύριο το απόγευμα ή την Παρασκευή πρωί",
+   "intent": "casual",
+   "seconds": 2.24,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 3,
    "probe": "Τι κάνεις; Όλα καλά;",
-   "reply": "Ναι φίλε μια χαρα ειμαι τώρα σε ενα διαλειμμα απο εργασια πού έχω να στειλω την αλλη εβδομαδα και θέλει ταμπακαρισμα",
+   "reply": "Ναι φίλε όλα μια χαρά να είσαι κι εσύ καλά!",
+   "intent": "casual",
+   "seconds": 0.97,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 3,
+   "probe": "Θα έρθεις τελικά το Σάββατο;",
+   "reply": "Ναι εννοείται θα έρθω",
+   "intent": "schedule",
+   "seconds": 0.97,
+   "context_chars": 315,
+   "groundable": true
+  },
+  {
+   "run": 3,
+   "probe": "Μπορείς να μου στείλεις την αναφορά μέχρι αύριο;",
+   "reply": "Ναι εννοείται",
+   "intent": "casual",
+   "seconds": 0.43,
+   "context_chars": 0,
+   "groundable": false
+  },
+  {
+   "run": 3,
+   "probe": "Πώς σου φάνηκε η συνάντηση σήμερα;",
+   "reply": "Ωραία ήτανε. Μιλήσαμε για τα πάντα και με βοήθησε πολύ να καταλάβω καλύτερα το θέμα του project πού θα κάνω στο εξάμηνο αυτό.",
+   "intent": "schedule",
+   "seconds": 2.37,
+   "context_chars": 465,
+   "groundable": true
+  },
+  {
+   "run": 3,
+   "probe": "Έχεις κανένα νέο για το project;",
+   "reply": "Θα σας στείλω περισσότερες λεπτομέρειες αργότερα σήμερα μέσω email",
    "intent": "casual",
    "seconds": 2.1,
    "context_chars": 0,
    "groundable": false
   },
   {
-   "run": 2,
-   "probe": "Θα έρθεις τελικά το Σάββατο;",
-   "reply": "Ναι ναι θα ερθω κανονικα",
-   "intent": "schedule",
-   "seconds": 1.13,
-   "context_chars": 315,
-   "groundable": true
-  },
-  {
-   "run": 2,
-   "probe": "Μπορείς να μου στείλεις την αναφορά μέχρι αύριο;",
-   "reply": "Ναι το έχω έτοιμο και περιμένω τον καθηγητή για μια τελική ματιά και θα σου στα στείλω μόλις τελειώσω με αυτόν.",
-   "intent": "casual",
-   "seconds": 1.65,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 2,
-   "probe": "Πώς σου φάνηκε η συνάντηση σήμερα;",
-   "reply": "Εντάξει ήταν, δεν είχε κάτι ιδιαίτερο να συζητήσουμε πραγματικά αλλά οκ",
-   "intent": "schedule",
-   "seconds": 1.47,
-   "context_chars": 465,
-   "groundable": true
-  },
-  {
-   "run": 2,
-   "probe": "Έχεις κανένα νέο για το project;",
-   "reply": "Είδα ότι έχει ανέβει η εργασία του Ταμπακά στο eclass και ξεκίνησα να τη μελετάω αργά το βράδυ χθες και ξύπνησα νωρίς σήμερα πρωί οπότε την τελείωσα τώρα πριν από λίγο. Πάνε περίπου 2 ώρες πού ασχολήθηκα με αυτή, θα σου στείλω σε λιγάκι για επιβεβαίωση αν είναι οκ.",
-   "intent": "casual",
-   "seconds": 4.12,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 2,
+   "run": 3,
    "probe": "Τι λες να φάμε το βράδυ;",
-   "reply": "Ο,τι θες εσύ μου είναι οκ",
+   "reply": "Οτιδήποτε με ρύζι οκ για μένα",
    "intent": "casual",
-   "seconds": 0.69,
+   "seconds": 0.73,
    "context_chars": 0,
    "groundable": false
   },
   {
-   "run": 2,
+   "run": 3,
    "probe": "Can you join the call at 3pm tomorrow?",
-   "reply": "Ναι, εννοείται. Να στείλω πρόσκληση και για την υπόλοιπη ομάδα να συνδεθούν εκείνη την ώρα ή θα κάνετε κάτι άλλο στο ενδιάμεσο;",
+   "reply": "Πραγματογνωμονας καλημεραα",
    "intent": "casual",
-   "seconds": 1.84,
+   "seconds": 0.97,
    "context_chars": 0,
    "groundable": false
   },
   {
-   "run": 2,
+   "run": 3,
    "probe": "Ευχαριστώ πολύ για τη βοήθεια χθες!",
-   "reply": "Παρακαλώ φίλε να είστε καλά και εσείς πού με βοηθήσατε",
-   "intent": "casual",
-   "seconds": 1.08,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 2,
-   "probe": "Πότε μπορούμε να τα πούμε από κοντά;",
-   "reply": "Μπορούμε την Τρίτη στις 12:30 αν σε βολεύει. Θα έχω ολοκληρώσει με τη διπλωματική και θα μπορώ να αφιερώσω χρόνο για καφέ ή ότι άλλο θέλεις μετά.",
-   "intent": "casual",
-   "seconds": 2.23,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 2,
-   "probe": "Στείλε μου όταν φτάσεις σπίτι.",
-   "reply": "Το εστειλα στην οτι δεν θα ερθω σήμερα και με ειπε να της στειλω την παρουσιαση όταν είναι ετοιμη γιατί ηθελε να τη δει πριν συναντηθούμε το σκ πού ερχεται",
-   "intent": "casual",
-   "seconds": 2.98,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
-   "probe": "Τι κάνεις; Όλα καλά;",
-   "reply": "Ωραία, εσύ είσαι οκ;",
-   "intent": "casual",
-   "seconds": 0.69,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
-   "probe": "Θα έρθεις τελικά το Σάββατο;",
-   "reply": "Ναι θα έρθω εννοείται",
-   "intent": "schedule",
-   "seconds": 1.0,
-   "context_chars": 315,
-   "groundable": true
-  },
-  {
-   "run": 3,
-   "probe": "Μπορείς να μου στείλεις την αναφορά μέχρι αύριο;",
-   "reply": "Ναι εννοείται! Θα τη στείλω τώρα κιόλας.",
-   "intent": "casual",
-   "seconds": 0.87,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
-   "probe": "Πώς σου φάνηκε η συνάντηση σήμερα;",
-   "reply": "Ωραία ήταν, μιλήσαμε για αρκετά θέματα και τα λύσαμε όλα πιστεύω.",
-   "intent": "schedule",
-   "seconds": 1.57,
-   "context_chars": 465,
-   "groundable": true
-  },
-  {
-   "run": 3,
-   "probe": "Έχεις κανένα νέο για το project;",
-   "reply": "Δεν έχουμε νέα ακόμα δυστυχώς. Περιμένουμε να μας απαντήσει ο στα email πού του στείλαμε χθες και θα δούμε τι κίνηση έχει γίνει από την πλευρά τους μετά.",
-   "intent": "casual",
-   "seconds": 2.17,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
-   "probe": "Τι λες να φάμε το βράδυ;",
-   "reply": "Ό,τι θες εσύ φίλε, εγώ ειμαι ανοιχτός σε προτάσεις",
-   "intent": "casual",
-   "seconds": 1.07,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
-   "probe": "Can you join the call at 3pm tomorrow?",
-   "reply": "Ναι μπορώ φίλε είναι οκ για μενα το προγραμμα",
+   "reply": "Άστα να πάνε φίλε... Είναι πολύ αγχος",
    "intent": "casual",
    "seconds": 0.86,
    "context_chars": 0,
@@ -316,28 +325,19 @@
   },
   {
    "run": 3,
-   "probe": "Ευχαριστώ πολύ για τη βοήθεια χθες!",
-   "reply": "Παρακαλώ φίλε, καλό είναι να ξερουμε τι γινεται στην εταιρεία μας",
-   "intent": "casual",
-   "seconds": 1.23,
-   "context_chars": 0,
-   "groundable": false
-  },
-  {
-   "run": 3,
    "probe": "Πότε μπορούμε να τα πούμε από κοντά;",
-   "reply": "Εγώ έχω μάθημα μέχρι τις 12:30 αύριο και μετά δεν έχω κάτι προγραμματισμένο. Θα είσαι οκ αν έρθω γύρω στις 1-2 το μεσημέρι? Αν θες βέβαια, εννοείται ότι μπορώ λίγο πιο αργά ή νωρίτερα ανάλογα με τη δική σου μέρα.",
+   "reply": "Αυτό το Σάββατο νομίζω θα είναι η επόμενη συνάντηση μας αν είσαι οκ με αυτό τον προγραμματισμό",
    "intent": "casual",
-   "seconds": 3.13,
+   "seconds": 1.21,
    "context_chars": 0,
    "groundable": false
   },
   {
    "run": 3,
    "probe": "Στείλε μου όταν φτάσεις σπίτι.",
-   "reply": "",
+   "reply": "Ναι ναι το εστειλα",
    "intent": "casual",
-   "seconds": 0.56,
+   "seconds": 0.59,
    "context_chars": 0,
    "groundable": false
   }
