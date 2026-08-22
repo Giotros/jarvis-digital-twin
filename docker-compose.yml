@@ -101,9 +101,9 @@ services:
       - "8000:8000"
     environment:
       - JARVIS_ENABLED=true
-      - JARVIS_OLLAMA_URL=http://ollama:11434
+      - JARVIS_OLLAMA_URL=http://host.docker.internal:11434
       - JARVIS_OLLAMA_FALLBACK=https://confined-cursive-plating.ngrok-free.dev
-      - JARVIS_MODEL=mistral
+      - JARVIS_MODEL=jarvis
       - JARVIS_FALLBACK_MODEL=krikri-8b
       - JARVIS_CHROMA_URL=http://chromadb:8000
       - JARVIS_CORPUS=/app/data/jarvis_training_data_sanitized.json
@@ -113,7 +113,9 @@ services:
     networks:
       - jarvis-net
     depends_on:
-      - ollama
+      # ollama σκόπιμα ΕΚΤΟΣ: το inference τρέχει στον native Ollama του
+      # macOS για πρόσβαση στο Metal. Τα containers στο macOS δεν βλέπουν
+      # τη GPU. Βλ. scripts/use_native_ollama.sh
       - chromadb
 
   # ── Frontend: React UI ───────────────────────────────────────
