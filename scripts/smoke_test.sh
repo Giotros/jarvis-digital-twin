@@ -156,6 +156,22 @@ else
     bad "το webhook δεν απάντησε"
 fi
 
+# ── 5b. Registers ───────────────────────────────────────────
+# Το χαρακτηριστικό αποτυγχάνει σιωπηλά: αν η ιδιότητα δεν φτάσει
+# στο μοντέλο, το pop-up εξακολουθεί να εμφανίζεται και οι
+# απαντήσεις απλώς είναι ίδιες. Ελέγχεται εδώ ώστε να μη
+# φτάσει έτσι στην παρουσίαση.
+PERSONA=$(curl -s --max-time 5 -X POST http://localhost:8000/orchestration/persona \
+          -H "Content-Type: application/json" \
+          -d '{"speaker_name":"Παναγιώτης","speaker_role":"καθηγητής"}' 2>/dev/null)
+if echo "$PERSONA" | grep -q '"academic"'; then
+    ok "registers: «καθηγητής» → academic"
+elif [[ -n "$PERSONA" ]]; then
+    bad "registers: λάθος επιλογή → $(echo "$PERSONA" | head -c 60)"
+else
+    warn "το /orchestration/persona δεν απαντά (χρειάζεται rebuild της jarvis-api;)"
+fi
+
 # ── 6. Tests ────────────────────────────────────────────────
 echo ""
 echo -e "${BLUE}6. Unit tests${NC}"

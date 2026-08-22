@@ -1,3 +1,5 @@
+import pytest
+
 """Tests for the post-processing guardrails pipeline."""
 
 from jarvis.inference.guardrails import Guardrails
@@ -113,3 +115,134 @@ def test_from_settings():
     g = Guardrails.from_settings(settings)
     result = g.process("καλα φιλε")
     assert result[0].isupper()
+
+
+# ── Regressions found in live evaluation (2026-08-22) ──────────
+
+@pytest.mark.parametrize("text,stem", [
+    ("Ναι εννοείται τρελε πουστη μ", "πουστ"),   # unaccented, inflected
+    ("Ρε πούστη μου τι λες", "πούστ"),           # accented — original filter missed it
+    ("ειναι μαλακισμενος", "μαλακισμ"),
+    ("κωλοπαιδο", "κωλοπαιδ"),
+])
+def test_profanity_filtered_across_accents_and_inflection(text, stem):
+    """Greek profanity inflects and is written with or without accents.
+
+    An exact-word list fails on both counts. These strings were produced by
+    the live model during evaluation and passed the original filter intact.
+    """
+    out = Guardrails().process(text)
+    assert stem not in out.lower()
+    assert "..." not in out, "blocked words are removed, not marked"
+
+
+@pytest.mark.parametrize("text,softened", [
+    ("μαλάκα τι λες", "φίλε"),      # accented — never matched the exact key
+    ("μαλακα τι λες", "φίλε"),
+    ("σκατά η μέρα", "χάλια"),
+])
+def test_profanity_replacements_survive_accents(text, softened):
+    """The replacement map matched raw text, so accented forms slipped past.
+
+    Same failure mode as the blocked list, in the loop directly above it.
+    """
+    assert softened in Guardrails().process(text).lower()
+
+
+def test_removal_leaves_no_stray_punctuation_or_gaps():
+    """A deleted word must not leave "τρελε  μ" or a stranded comma."""
+    out = Guardrails().process("Ναι εννοείται τρελε πουστη μ")
+    assert "  " not in out
+    assert " ," not in out
+    assert out == "Ναι εννοείται τρελε μ"
+
+
+@pytest.mark.parametrize("text", [
+    "Καλά είμαι φίλε",
+    "Ναι θα έρθω το Σάββατο",
+    "Πάω για τρέξιμο",
+    "Είμαι στην Τρίπολη, σπουδάζω πληροφορική.",
+])
+def test_clean_text_untouched_by_profanity_filter(text):
+    assert Guardrails().process(text) == text
+
+
+@pytest.mark.parametrize("text,forbidden", [
+    ("Ναι [NAME]", "[NAME]"),
+    ("Ο [Person_26] ειπε", "[Person_26]"),
+    ("Παρε με στο [PHONE]", "[PHONE]"),
+    ("Στειλε στο [EMAIL]", "[EMAIL]"),
+])
+def test_anonymisation_placeholders_never_reach_output(text, forbidden):
+    """Privacy placeholders are training artefacts, not words.
+
+    The model saw ~4,700 of them during fine-tuning and emits them fluently;
+    "Ναι [NAME]" was an actual reply from the deployed system.
+    """
+    assert forbidden not in Guardrails().process(text)
+
+
+def test_accents_survive_profanity_filtering():
+    """Folding is used to *find* matches, not to rewrite the whole reply."""
+    out = Guardrails().process("Καλησπέρα, όλα καλά σήμερα")
+    assert "ό" in out or "έ" in out
+
+
+# ── Register enforcement (regression: "αγορι μ" to a professor) ─
+
+@pytest.mark.parametrize("register", ["professional", "academic"])
+@pytest.mark.parametrize("text", [
+    "Ειμαι καλά αγορι μ να ξερς",
+    "Καλά φιλαράκι μ ειμαι",
+    "ειμαι καλα ρε φιλε σε ευχαριστω",
+    "Ωραία μεγάλε",
+])
+def test_familiar_vocatives_removed_in_formal_registers(register, text):
+    """The model does not drop these when asked, so they are removed after.
+
+    Both a prompt instruction and a few-shot demonstration reduce the rate;
+    neither takes it to zero, and one "αγόρι μου" addressed to an examiner is
+    one too many.
+    """
+    out = Guardrails().process(text, register=register)
+    for word in ("αγορι μ", "φιλαρακι", "φιλε", "μεγαλε"):
+        assert word not in Guardrails._strip_accents(out).lower()
+
+
+@pytest.mark.parametrize("text", [
+    "Ειμαι καλά αγορι μ",
+    "Καλά φιλαράκι μου",
+])
+def test_familiar_vocatives_kept_in_casual_registers(text):
+    """With a friend these words are the voice, not a defect."""
+    out = Guardrails().process(text, register="close")
+    assert "αγορι" in out.lower() or "φιλαράκι" in out.lower()
+
+
+@pytest.mark.parametrize("text", [
+    "Είναι μεγάλο πρόβλημα αυτό",       # μεγάλε vs μεγάλο
+    "Έχω τρελό φόρτο αυτή την περίοδο",  # τρελέ vs τρελό
+    "Η αδερφή μου σπουδάζει εκεί",       # αδερφέ vs αδερφή
+])
+def test_vocative_stripping_does_not_eat_ordinary_words(text):
+    """Stems would be too blunt here.
+
+    Greek vocatives share a stem with common adjectives and nouns: matching
+    "μεγαλ" would delete "μεγάλο πρόβλημα". The masculine -ε ending is what
+    makes the match safe.
+    """
+    assert Guardrails().process(text, register="academic") == text
+
+
+def test_enforce_register_is_idempotent():
+    """It runs at generation and possibly again downstream."""
+    g = Guardrails()
+    once = g.enforce_register("Καλά φιλαράκι μου, ναι", "academic")
+    assert g.enforce_register(once, "academic") == once
+
+
+def test_process_without_register_is_unchanged_behaviour():
+    """The register argument is optional; existing callers must not shift."""
+    g = Guardrails()
+    text = "Καλά φιλαράκι μου"
+    assert g.process(text) == g.process(text, register="")

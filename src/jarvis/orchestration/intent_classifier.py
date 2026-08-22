@@ -81,10 +81,69 @@ _PERSONAL_PATTERNS: list[tuple[str, float]] = [
     (r"\b(cv|resume)\b", 0.85),
     (r"\bπες\s+μου\s+για\s+(σενα|εσένα|τον εαυτο σου)\b", 0.90),
     (r"\bπες\s+μου\s+για\s+(σένα|εσένα|τον εαυτό σου)\b", 0.90),
+
+    # Questions an examiner asks about the work.
+    #
+    # These all fell to the casual fallback at confidence 0.50: "γιατί
+    # διάλεξες το Krikri", "πώς αντιμετώπισες τα προσωπικά δεδομένα", "ποια
+    # ήταν η μεγαλύτερη δυσκολία". They are the questions the presentation
+    # exists to answer, and they were the ones routed nowhere in particular.
+    #
+    # PERSONAL is the right branch: it loads identity, and the academic
+    # register adds the project facts on top. Retrieval would add nothing —
+    # the corpus contains no discussion of the architecture.
+    (r"\bγιατ[ιί]\s+(διαλεξες|διάλεξες|επελεξες|επέλεξες)\b", 0.85),
+    (r"\b(τι|τί)\s+(τεχνολογ|εργαλει|εργαλεί)\w*", 0.80),
+    (r"\bπ[ωώ]ς\s+(το\s+)?(υλοποιησες|υλοποίησες|εφτιαξες|έφτιαξες|εχτισες|έχτισες)\b", 0.85),
+    (r"\bπ[ωώ]ς\s+αντιμετ[ωώ]πισες\b", 0.85),
+    (r"\b(ποια|ποιο)\s+(ηταν|ήταν)\s+(η|το)\s+(μεγαλυτερη|μεγαλύτερη|κυρια|κύρια|βασικ[ηό])\b", 0.80),
+    (r"\b(δυσκολ|προκλησ|πρόκλησ)\w*\s+(που|στην|στη)\b", 0.70),
+    (r"\b(αρχιτεκτονικ|μεθοδολογ)\w*", 0.80),
+    (r"\b(συνεισφορ|συμπερασμ|συμπέρασμ)\w*", 0.75),
+    (r"\b(μελλοντικ[ηή]|επομεν[αο]|επόμεν[αο])\s+(εργασ|βημα|βήμα)\w*", 0.75),
+    (r"\bπεριορισμ(ο[ιί]|ούς|ους)\b", 0.80),
+    (r"\b(krikri|κρικρι|qlora|lora|rag|ollama|databricks|ray)\b", 0.75),
+    (r"\bfine[- ]?tun\w*", 0.75),
+    (r"\b(gdpr|ανωνυμοποι)\w*", 0.80),
 ]
 
-# Knowledge/technical — answered via RAG
+# Recall — the only questions the conversation corpus can actually answer.
+#
+# KNOWLEDGE is the branch that triggers retrieval, and it used to hold generic
+# technical patterns: "πώς να κάνω setup σε AWS", "τι είναι το Docker". Those
+# sent a general-knowledge question to a retriever whose entire index is
+# George's personal Viber history. The retriever always returns *something*,
+# so the model received unrelated chat as evidence and answered confidently
+# from it.
+#
+# Meanwhile the questions retrieval is actually good at — "τι μου έλεγες για
+# το σπίτι", "τι είχες πει για το αυτοκίνητο" — matched nothing and fell
+# through to the casual fallback, where no context is fetched at all. The
+# branch was firing on exactly the wrong half of the input.
+#
+# So this category now means "answerable from what we have said to each
+# other". Generic technical questions moved to CASUAL, where the model
+# answers from its own knowledge and no false evidence is supplied.
 _KNOWLEDGE_PATTERNS: list[tuple[str, float]] = [
+    # Explicit recall
+    (r"\bθυμ(ασαι|άσαι|ηθηκες|ήθηκες)\b", 0.85),
+    (r"\b(τι|τί)\s+(μου\s+)?(ελεγες|έλεγες|ειπες|είπες)\b", 0.85),
+    (r"\b(τι|τί)\s+(ειχες|είχες)\s+(πει|γραψει|γράψει)\b", 0.85),
+    (r"\b(τι|τί)\s+(συζητησαμε|συζητήσαμε|λεγαμε|λέγαμε)\b", 0.85),
+    (r"\b(ειχαμε|είχαμε)\s+(πει|συζητησει|συζητήσει|μιλησει|μιλήσει)\b", 0.85),
+    (r"\bπαλι[οό]τερα\b", 0.65),
+    # Reference to a shared past topic
+    (r"\b(τι|τί)\s+(εγινε|έγινε)\s+με\s+", 0.75),
+    (r"\b(εκεινο|εκείνο|εκεινη|εκείνη)\s+το\s+θεμα\b", 0.75),
+    (r"\bγια\s+(εκεινο|εκείνο)\s+που\b", 0.70),
+]
+
+# Generic technical questions — answered from the model's own knowledge.
+#
+# Deliberately NOT retrieval-backed. The corpus has nothing to say about AWS
+# or Docker, and supplying it anyway is how "5/10 θα έβαζα" ended up as the
+# answer to a technical question.
+_TECHNICAL_PATTERNS: list[tuple[str, float]] = [
     (r"\b(πως|πώς)\s+(να|θα)\b", 0.70),
     (r"\b(εξηγησε|εξήγησε)\b", 0.75),
     (r"\b(τι\s+ειναι|τί\s+είναι)\s+\w+", 0.70),
@@ -212,7 +271,11 @@ _ALL_CATEGORIES: list[tuple[Intent, list[tuple[str, float]]]] = [
     (Intent.WEATHER, _WEATHER_PATTERNS),        # specific topic
     (Intent.NEWS, _NEWS_PATTERNS),              # specific topic
     (Intent.PERSONAL, _PERSONAL_PATTERNS),
-    (Intent.KNOWLEDGE, _KNOWLEDGE_PATTERNS),
+    (Intent.KNOWLEDGE, _KNOWLEDGE_PATTERNS),   # recall only — retrieval-backed
+    # Generic technical questions land in CASUAL: the model answers from its
+    # own knowledge with no retrieval, because the corpus has nothing
+    # relevant and supplying it anyway produced confident nonsense.
+    (Intent.CASUAL, _TECHNICAL_PATTERNS),
     (Intent.CASUAL, _CASUAL_PATTERNS),
 ]
 

@@ -12,6 +12,7 @@ Pipeline: raw response → emoji cleanup → name filter → profanity filter
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 
@@ -80,13 +81,56 @@ _DEFAULT_PROFANITY_REPLACEMENTS: dict[str, str] = {
 }
 
 # Default blocked words (replaced with "...")
+#
+# Stored as STEMS, matched accent- and case-insensitively against a
+# normalised copy of the text. An exact word list fails twice over in
+# Greek: "πούστη" (accented) misses "πουστη", and "πουστης / πουστες /
+# πουστη" are three separate surface forms of one stem. The corpus is
+# casual chat between friends, so the model produces these fluently —
+# observed in evaluation as "Ναι εννοείται τρελε πουστη μ", which passed
+# the original filter untouched.
 _DEFAULT_BLOCKED_WORDS: list[str] = [
-    "γαμησε", "γαμησετα", "γαμω", "γαμησου", "γαμωτο",
-    "πουτανα", "σκατα", "αρχιδι", "μουνι", "γαμημεν", "σκασε",
+    # sexual / obscene
+    "γαμησ", "γαμω", "γαμωτ", "γαμημ", "πουταν", "μουν", "αρχιδ",
+    "πουστ", "καριολ", "μαλακισμεν", "μπινε",
+    # scatological
+    "σκατ", "χεσ", "κωλοπαιδ",
+    # insults likely in friendly banter but wrong in a demo
+    "βλαμμεν", "ηλιθι", "κωλο",
 ]
 
 # Words considered impolite (removed)
 _DEFAULT_IMPOLITE: list[str] = ["ρε"]
+
+# Familiar vocatives, stripped in the professional and academic registers.
+#
+# Prompting alone does not remove these. The adapter was trained on 13k
+# casual messages where they appear constantly, and asked to address a
+# professor the model still produced "Ειμαι καλά αγορι μ να ξερς". A
+# demonstration in the prompt improves the odds; it does not make them zero,
+# and one "αγόρι μου" to an examiner is one too many. Deterministic removal
+# is the only version of this that can be relied on during a viva.
+#
+# Matched as *vocative forms*, not stems. Stems are too blunt in Greek:
+# "μεγαλ" would also delete "μεγάλο πρόβλημα", and "τρελ" would delete
+# "τρελό". The masculine vocative ending -ε is distinctive enough to match
+# safely, and the neuter familiar forms are only ever addresses when they
+# carry a possessive ("αγόρι μου"), so the possessive is required.
+_FAMILIAR_VOCATIVE_PATTERNS: list[str] = [
+    r"φιλαρακι(?:\s+μ(?:ου)?)?",
+    r"φιλε",
+    r"φιλαρα",
+    r"αδερφε",
+    r"αδελφε",
+    r"μεγαλε",
+    r"αρχηγε",
+    r"μαστορα",
+    r"τρελε",
+    r"αγορι\s+μ(?:ου)?",
+    r"κουκλα\s+μ(?:ου)?",
+    r"μανα\s+μ(?:ου)?",
+    r"ψυχη\s+μ(?:ου)?",
+]
 
 # Common hallucinated name prefixes
 _HALLUCINATED_NAMES: list[str] = [
@@ -139,13 +183,30 @@ class Guardrails:
             impolite_words=g.get("impolite_words"),
         )
 
-    def process(self, text: str) -> str:
-        """Run the full guardrail pipeline."""
+    #: Registers where familiar address is wrong. Kept as a set rather than a
+    #: boolean so a future register can opt in without changing callers.
+    FORMAL_REGISTERS = frozenset({"professional", "academic"})
+
+    _VOCATIVE_RE = re.compile(
+        r",?\s*\b(?:" + "|".join(_FAMILIAR_VOCATIVE_PATTERNS) + r")\b",
+        re.IGNORECASE,
+    )
+
+    def process(self, text: str, register: str = "") -> str:
+        """Run the full guardrail pipeline.
+
+        ``register`` is the relationship register the reply was generated
+        for. In the formal registers, familiar vocatives are removed after
+        generation, because the model does not reliably drop them when asked.
+        """
         if not text:
             return text
 
         # Always first: anonymisation placeholders must never reach a reader.
         text = self._strip_anonymisation_placeholders(text)
+
+        if register in self.FORMAL_REGISTERS:
+            text = self._strip_familiar_vocatives(text)
 
         if self.clean_emojis:
             text = self._clean_emoji_artifacts(text)
@@ -183,6 +244,49 @@ class Guardrails:
         cleaned = re.sub(r"\s{2,}", " ", cleaned)
         return cleaned.strip()
 
+    def sanitise_output(self, text: str, register: str = "") -> str:
+        """The subset of the pipeline that must run at generation time.
+
+        Two rules cannot wait for the downstream guardrails node. Register
+        enforcement needs to know who is being addressed, which only the
+        generation step knows. Placeholder stripping is here because it must
+        never be skipped, and it *was* being skipped: callers that hit
+        /generate directly bypassed :meth:`process` entirely, and "[NAME]"
+        reappeared in output that had supposedly been cleaned. A rule whose
+        whole point is that it always applies should not live only on one
+        code path.
+
+        Both are idempotent, so the later node stays correct.
+        """
+        if not text:
+            return text
+        text = self._strip_anonymisation_placeholders(text)
+        if register in self.FORMAL_REGISTERS:
+            text = self._strip_familiar_vocatives(text)
+        return text
+
+    def enforce_register(self, text: str, register: str) -> str:
+        """Deprecated alias for :meth:`sanitise_output`."""
+        return self.sanitise_output(text, register)
+
+    def _strip_familiar_vocatives(self, text: str) -> str:
+        """Remove "φίλε", "αγόρι μου" and friends from a formal reply.
+
+        Matching folds accents — "φιλαράκι" and "φιλαρακι" are one word — and
+        the cut is made on the original string by offset, so the rest of the
+        reply keeps its diacritics. Same technique as the profanity filter,
+        and for the same reason it was needed there.
+        """
+        folded = self._strip_accents(text)
+        result = text
+        for match in reversed(list(self._VOCATIVE_RE.finditer(folded))):
+            result = result[: match.start()] + result[match.end() :]
+
+        result = re.sub(r"\s+([,.;!?·])", r"\1", result)
+        result = re.sub(r"\s{2,}", " ", result)
+        # A reply that opened with the vocative now starts with a comma.
+        return re.sub(r"^[\s,·]+", "", result).strip()
+
     def _clean_emoji_artifacts(self, text: str) -> str:
         """Remove text emoji like (laugh), (purple_heart), etc."""
         return re.sub(r"\([a-z_]+\)", "", text).strip()
@@ -193,18 +297,68 @@ class Guardrails:
         text = re.sub(rf"^({pattern})\s+", "", text, flags=re.IGNORECASE)
         return text
 
-    def _filter_profanity(self, text: str) -> str:
-        """Replace profanity with milder alternatives, block the rest."""
+    @staticmethod
+    def _strip_accents(text: str) -> str:
+        """Fold diacritics so 'πούστη' and 'πουστη' are the same token.
+
+        Length-preserving for Greek: each precomposed letter decomposes to
+        one base plus one combining mark, and removing the mark restores the
+        original length. This lets the normalised copy be used purely for
+        *locating* matches, while replacement happens on the original text.
+        """
+        decomposed = unicodedata.normalize("NFD", text)
+        return "".join(c for c in decomposed if not unicodedata.combining(c))
+
+    def _substitute_folded(self, text: str, rules: dict[str, str]) -> str:
+        """Apply stem→replacement rules, matching without regard to accents.
+
+        Both loops here originally used plain ``re.sub`` on the raw text.
+        That silently failed on every accented form: the corpus is written
+        with accents, so "μαλάκα" never matched the key "μαλακα" and passed
+        through untouched. Matching therefore happens on an accent-folded
+        copy, which is length-preserving for Greek, and the edit is applied
+        to the *original* string by offset so the surviving text keeps its
+        accents.
+
+        Each key is treated as a stem (``\\w*`` suffix) because Greek inflects:
+        one entry has to cover "μαλάκα", "μαλάκας", "μαλάκες".
+        """
+        if not rules:
+            return text
+
+        stems = "|".join(re.escape(k) for k in rules)
+        pattern = re.compile(rf"\b(?:{stems})\w*", re.IGNORECASE)
+        folded = self._strip_accents(text)
+
         result = text
-        # First: known replacements
-        for bad, good in self.profanity_replacements.items():
-            result = re.sub(re.escape(bad), good, result, flags=re.IGNORECASE)
-        # Then: block remaining
-        for word in self.blocked_words:
-            result = re.sub(
-                re.escape(word) + r"\w*", "...", result, flags=re.IGNORECASE
+        # Right to left, so offsets computed on the folded copy stay valid
+        # as the string changes length.
+        for match in reversed(list(pattern.finditer(folded))):
+            key = self._strip_accents(match.group(0)).lower()
+            replacement = next(
+                (v for k, v in rules.items() if key.startswith(k.lower())), ""
             )
+            result = result[: match.start()] + replacement + result[match.end() :]
         return result
+
+    def _filter_profanity(self, text: str) -> str:
+        """Soften what can be softened, delete what cannot.
+
+        Blocked words are *removed* rather than replaced with "...". The
+        ellipsis was worse than the problem it solved: it announced that
+        something had been censored, and its full stop made the capitaliser
+        upper-case the next word, producing "τρελε ... Μ" — an artefact no
+        reader can interpret as anything but a bug.
+        """
+        result = self._substitute_folded(text, self.profanity_replacements)
+        result = self._substitute_folded(
+            result, {w: "" for w in self.blocked_words}
+        )
+
+        # Close the seam left by a deletion: stranded punctuation, orphaned
+        # spaces before it, and doubled whitespace.
+        result = re.sub(r"\s+([,.;!?·])", r"\1", result)
+        return re.sub(r"\s{2,}", " ", result).strip()
 
     def _remove_impolite_words(self, text: str) -> str:
         """Remove impolite words like 'ρε'."""

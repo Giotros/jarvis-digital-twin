@@ -1,0 +1,20 @@
+{
+ "jarvis": {
+  "technical_contradictions": 0,
+  "technical_probes": 5,
+  "mean_coverage": 0.43333333333333335,
+  "non_answers": 0,
+  "style_distance": 0.11563713341814143,
+  "mean_latency_s": 3.7584484862222216,
+  "mean_words_technical": 48.6
+ },
+ "jarvis-base": {
+  "technical_contradictions": 0,
+  "technical_probes": 5,
+  "mean_coverage": 0.6566666666666666,
+  "non_answers": 0,
+  "style_distance": 0.20664236407194841,
+  "mean_latency_s": 4.639802425777778,
+  "mean_words_technical": 65.2
+ }
+}

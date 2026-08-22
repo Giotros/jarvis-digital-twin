@@ -30,6 +30,7 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from jarvis.orchestration import persona
 from jarvis.orchestration.intent_classifier import classify_intent, Intent
 from jarvis.inference.guardrails import Guardrails
 from jarvis.inference.identity import load_identity, identity_to_prompt
@@ -103,6 +104,10 @@ class GenerateRequest(BaseModel):
     history: list[ChatMessage] = Field(default_factory=list, description="Previous conversation turns")
     system_prompt: str = Field("")
     context: str = Field("", description="RAG or identity context to inject")
+    # Collected once per session by the client. Held for the lifetime of the
+    # request only — never logged, never persisted, never added to the corpus.
+    speaker_name: str = Field("", max_length=80, description="Interlocutor's first name")
+    speaker_role: str = Field("", max_length=80, description="Relationship to George")
     max_new_tokens: int = Field(150, ge=1, le=1024)
     temperature: float = Field(0.5, ge=0.0, le=2.0)
     top_p: float = Field(0.85, ge=0.0, le=1.0)
@@ -114,6 +119,9 @@ class GenerateResponse(BaseModel):
     reply: str
     model: str
     tokens_generated: int = 0
+    #: Which register produced this reply. Reported so the behaviour is
+    #: visible during a demo instead of being an unexplained tone shift.
+    speaker_register: str = "neutral"
 
 
 class GuardrailsRequest(BaseModel):
@@ -187,6 +195,39 @@ def identity_lookup(req: IdentityRequest) -> IdentityResponse:
     )
 
 
+class PersonaRequest(BaseModel):
+    speaker_name: str = Field("", max_length=80)
+    speaker_role: str = Field("", max_length=80)
+
+
+class PersonaResponse(BaseModel):
+    speaker_register: str
+    label: str
+    target_words: int
+    system_prompt: str
+
+
+@router.post("/persona", response_model=PersonaResponse)
+def persona_preview(req: PersonaRequest) -> PersonaResponse:
+    """Show which register a given ιδιότητα selects, and the prompt it builds.
+
+    Exists because the first version of this feature silently did nothing:
+    the register was chosen correctly, the fragment was appended, and the
+    replies came back identical, with no way to see where the instruction was
+    lost. A feature whose only output is a tone shift needs somewhere to
+    inspect its input.
+    """
+    prompt, register = persona.build_system_prompt(
+        name=req.speaker_name, role=req.speaker_role
+    )
+    return PersonaResponse(
+        speaker_register=register.name,
+        label=register.label,
+        target_words=register.target_words,
+        system_prompt=prompt,
+    )
+
+
 @router.post("/rag", response_model=RAGResponse)
 def rag_search(req: RAGRequest) -> RAGResponse:
     """Search the RAG corpus for relevant conversation context."""
@@ -249,22 +290,54 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
     model_name = os.getenv("JARVIS_MODEL", "krikri-8b")
     fallback_model = os.getenv("JARVIS_FALLBACK_MODEL", "mistral")
 
-    # Build the full prompt with context
-    system = req.system_prompt or (
-        "Είσαι ο Γιώργος Τροχίδης, φοιτητής στο Πανεπιστήμιο Πελοποννήσου στην Τρίπολη.\n"
-        "Μιλάς ΠΑΝΤΑ σε πρώτο ενικό πρόσωπο — εσύ ΕΙΣΑΙ ο Γιώργος, ΟΧΙ AI ή βοηθός.\n"
-        "ΥΦΟΣ: Φιλικό, casual, σαν να μιλάς σε φίλο. Χρησιμοποίεις greeklish και αργκό αν ταιριάζει.\n"
-        "ΜΗΚΟΣ: Απάντα σε 1-3 προτάσεις. Μην είσαι μονολεκτικός — δώσε λίγη προσωπικότητα.\n"
-        "ΚΑΝΟΝΕΣ: Μην επινοείς πληροφορίες. Αν δεν ξέρεις κάτι, πες 'δεν θυμάμαι' ή 'δεν ξέρω'.\n"
-        "CONTEXT: Αν υπάρχει ιστορικό συνομιλίας, χρησιμοποίησέ το για να απαντήσεις σχετικά."
+    # The style section is generated from the register, not appended after a
+    # hard-coded one. A caller-supplied system_prompt (the Memory and
+    # Schedule nodes send one) becomes the *identity* half, so a routing
+    # instruction and a register can coexist without contradicting each other.
+    system, register = persona.build_system_prompt(
+        name=req.speaker_name,
+        role=req.speaker_role,
+        identity=req.system_prompt,
     )
 
     if req.context:
-        system += f"\n\nΣΧΕΤΙΚΟ CONTEXT:\n{req.context}"
+        from jarvis.rag.context_builder import frame_context
+
+        system += "\n\n" + frame_context(req.context)
+
+    # Optional ablation: serve the academic register from the base model with
+    # no adapter attached. Unset by default, so nothing changes unless the
+    # experiment is deliberately switched on.
+    #
+    # The adapter learned to write like George on Viber, which is exactly what
+    # the close register wants and exactly what fights a technical question:
+    # it pulls towards short, loose and improvised, and it outweighs the
+    # system prompt. Both models share one GGUF on disk, so the comparison
+    # costs no extra download and no extra 5GB.
+    academic_model = os.getenv("JARVIS_MODEL_ACADEMIC", "").strip()
+    if academic_model and register is persona.ACADEMIC:
+        model_name = academic_model
+
+    # The register raises the token ceiling but never lowers it. Asking for
+    # "2-4 πλήρεις προτάσεις" inside a 150-token budget produces a reply cut
+    # off mid-sentence, which in front of an examiner reads as a crash. The
+    # instruction and the budget have to agree, and the safe direction is up:
+    # brevity is enforced by the prompt, not by truncation.
+    temperature = req.temperature
+    max_new_tokens = max(req.max_new_tokens, register.max_new_tokens)
 
     try:
         # Build messages with conversation history
         messages = [{"role": "system", "content": system}]
+
+        # Register demonstrations go before the real history, so the model
+        # reads them as how this conversation has been going. Placing them
+        # after would make the user's own last turn the nearest example and
+        # undo the effect.
+        for q, a in register.examples:
+            messages.append({"role": "user", "content": q})
+            messages.append({"role": "assistant", "content": a})
+
         for msg in req.history[-10:]:  # Keep last 10 turns for context
             messages.append({"role": msg.role, "content": msg.content})
         messages.append({"role": "user", "content": req.message})
@@ -282,20 +355,31 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
                             "messages": messages,
                             "stream": False,
                             "options": {
-                                "temperature": req.temperature,
+                                "temperature": temperature,
                                 "top_p": req.top_p,
                                 "top_k": req.top_k,
                                 "repeat_penalty": req.repetition_penalty,
-                                "num_predict": req.max_new_tokens,
+                                "num_predict": max_new_tokens,
                             },
                         },
                     )
                     response.raise_for_status()
                     data = response.json()
+
+                    # Register enforcement happens here rather than in the
+                    # /guardrails node, which has no way of knowing who is
+                    # being spoken to. Doing it here needs no workflow change
+                    # and is idempotent, so the later node stays correct.
+                    reply = _guardrails.sanitise_output(
+                        data.get("message", {}).get("content", ""),
+                        register.name,
+                    )
+
                     return GenerateResponse(
-                        reply=data.get("message", {}).get("content", ""),
+                        reply=reply,
                         model=model,
                         tokens_generated=data.get("eval_count", 0),
+                        speaker_register=register.name,
                     )
             except (httpx.ConnectError, httpx.HTTPStatusError):
                 used_url = fallback_url
@@ -521,6 +605,150 @@ def _format_calendar_context(
     return "\n".join(lines) if lines else ""
 
 
+class BriefingRequest(BaseModel):
+    #: Identities the caller has already delivered. Sent back by the client
+    #: so the twin does not report the same unread email every hour.
+    already_said: list[str] = Field(default_factory=list)
+    threshold: float = Field(3.0, ge=0.0, le=20.0)
+
+
+class BriefingResponse(BaseModel):
+    #: Empty when there was nothing worth saying. The caller sends nothing.
+    text: str
+    #: "spoke" | "spoke_degraded" | "silent_below_threshold"
+    #: | "silent_nothing_observed"
+    status: str
+    #: Identities to remember, so the next run can suppress them.
+    identities: list[str] = []
+    unavailable: list[str] = []
+
+
+@router.post("/briefing", response_model=BriefingResponse)
+async def briefing(req: BriefingRequest) -> BriefingResponse:
+    """Assemble an unprompted brief, or decline to send one.
+
+    Called on a schedule rather than by a user. The interesting output is
+    often the empty one: a system that reports every morning regardless of
+    whether anything happened gets muted, and once muted it fails silently
+    while continuing to work.
+
+    Tool failures degrade rather than abort. A brief that says "I could not
+    check your email" is useful; one that says nothing because Gmail was
+    down is indistinguishable from a quiet day, and those are opposite
+    claims.
+    """
+    from jarvis.agency.briefing import build_briefing
+    from jarvis.agency.signals import Signal, Source, Urgency
+
+    signals: list[Signal] = []
+    unavailable: list[Source] = []
+
+    # Calendar
+    try:
+        events = await _upcoming_events()
+        for event in events:
+            signals.append(Signal(
+                source=Source.CALENDAR,
+                summary=event["summary"],
+                urgency=Urgency.TIME_BOUND,
+                occurs_at=event.get("starts_at"),
+                key=event.get("id", ""),
+            ))
+    except Exception as exc:  # noqa: BLE001 — degrade, do not abort
+        logger.warning("Briefing: calendar unavailable (%s)", exc)
+        unavailable.append(Source.CALENDAR)
+
+    # Email
+    try:
+        pending = await _pending_email()
+        for item in pending:
+            signals.append(Signal(
+                source=Source.EMAIL,
+                summary=item["summary"],
+                urgency=Urgency.BLOCKING if item.get("awaiting_reply")
+                else Urgency.NOTABLE,
+                key=item.get("id", ""),
+            ))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Briefing: email unavailable (%s)", exc)
+        unavailable.append(Source.EMAIL)
+
+    # Feedback backlog. Unlike the two above this needs no credentials, so
+    # the briefing has something real to say on a machine where Gmail and
+    # Calendar were never connected — which is the machine it will be
+    # demonstrated on. It is also the loop closing: corrections George marked
+    # while talking to the twin are what the next fine-tune trains on, and
+    # they are worth nothing sitting unreviewed in a log.
+    try:
+        pending_corrections = _unreviewed_corrections()
+        if pending_corrections:
+            signals.append(Signal(
+                source=Source.CONVERSATION,
+                summary=f"{pending_corrections} διορθώσεις περιμένουν έλεγχο",
+                urgency=Urgency.NOTABLE,
+                detail="από τη συνομιλία με το twin",
+                key=f"corrections-{pending_corrections}",
+            ))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Briefing: feedback log unreadable (%s)", exc)
+        unavailable.append(Source.CONVERSATION)
+
+    result = build_briefing(signals, unavailable, set(req.already_said))
+
+    return BriefingResponse(
+        text=result.text,
+        status=result.status,
+        identities=[s.identity() for s in signals],
+        unavailable=[s.value for s in unavailable],
+    )
+
+
+async def _upcoming_events() -> list[dict]:
+    """Calendar events for the next 24 hours.
+
+    Raises when the calendar cannot be reached, so the caller can say so.
+    Returning an empty list on failure would be indistinguishable from a
+    genuinely empty day — the distinction this whole endpoint turns on.
+    """
+    raise RuntimeError("Google Calendar credentials not configured")
+
+
+async def _pending_email() -> list[dict]:
+    """Messages that look like they are waiting on George.
+
+    Same contract as :func:`_upcoming_events`: raise, never return empty on
+    failure.
+    """
+    raise RuntimeError("Gmail credentials not configured")
+
+
+def _unreviewed_corrections() -> int:
+    """How many corrections are sitting in the feedback log.
+
+    A missing log means the twin has never been rated, which is a real zero
+    and not a failure — so this returns 0 rather than raising. An
+    *unreadable* log is different and does raise, because "I could not check"
+    and "there is nothing" must not collapse into the same answer.
+    """
+    if not FEEDBACK_LOG.exists():
+        return 0
+
+    count = 0
+    with open(FEEDBACK_LOG, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                # One malformed line should not hide the rest of the file.
+                continue
+            if entry.get("correction") or entry.get("rating", 0) < 0:
+                count += 1
+    return count
+
+
 @router.post("/guardrails", response_model=GuardrailsResponse)
 def apply_guardrails(req: GuardrailsRequest) -> GuardrailsResponse:
     """Apply post-processing guardrails to generated text."""
@@ -545,6 +773,14 @@ def fact_check(req: FactCheckRequest) -> FactCheckResponse:
     identity_data, prompt = _get_identity()
     response_lower = req.response.lower()
     issues: list[str] = []
+
+    # Technical confabulation about the thesis itself. Checked first because
+    # it is the costliest kind: an examiner asking about the method gets a
+    # fluent, specific, wrong answer, and fluency makes it harder to catch
+    # than a vague one.
+    from jarvis.inference.thesis_facts import check_technical_claims
+
+    issues.extend(check_technical_claims(req.response))
 
     # Known skills from identity
     known_skills = identity_data.get("technical_skills", {})

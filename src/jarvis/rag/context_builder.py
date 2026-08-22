@@ -124,3 +124,38 @@ def format_context(
             parts.append(r.text)
 
     return "\n---\n".join(parts)
+
+
+#: Wraps retrieved material so the model reads it as an archive rather than
+#: as the conversation it is currently in.
+#:
+#: Retrieved context is formatted as "Ερώτηση: … / Απάντηση Γιώργου: …" pairs,
+#: which is exactly the shape of a few-shot prompt. Injected under a neutral
+#: heading, an 8B model does the obvious thing and continues the pattern —
+#: it copies an archived answer verbatim. Measured as ``ungrounded_rate``
+#: 0.91, and visible in replies like "Ναι, 06/10 θα είμαι εκεί για την
+#: εγκατάσταση του νέου server" to a question that had nothing to do with a
+#: server. The fix is framing, not retrieval: the boundary has to be stated,
+#: and what the material is *for* has to be stated with it.
+_CONTEXT_FRAME = """ΑΡΧΕΙΟ ΠΑΛΙΩΝ ΣΥΝΟΜΙΛΙΩΝ — ΔΕΝ είναι η τωρινή κουβέντα.
+Είναι παλιά μηνύματα, από άλλη μέρα, με άλλους ανθρώπους.
+<<<ΑΡΧΕΙΟ
+{context}
+ΤΕΛΟΣ ΑΡΧΕΙΟΥ>>>
+
+ΠΩΣ ΤΟ ΧΡΗΣΙΜΟΠΟΙΕΙΣ:
+- Μόνο για να θυμηθείς γεγονότα για τον εαυτό σου και το ύφος σου.
+- ΜΗΝ αντιγράφεις προτάσεις, ημερομηνίες, ώρες, ονόματα ή ραντεβού από το αρχείο.
+- Αν το αρχείο δεν σχετίζεται με την ερώτηση, αγνόησέ το τελείως και απάντα κανονικά.
+- Απάντα ΜΟΝΟ στην τελευταία ερώτηση που σου έκαναν τώρα."""
+
+
+def frame_context(context: str) -> str:
+    """Present retrieved context as archived material, not as live dialogue.
+
+    Returns an empty string for empty input so callers can concatenate the
+    result unconditionally without emitting an empty, confusing section.
+    """
+    if not context or not context.strip():
+        return ""
+    return _CONTEXT_FRAME.format(context=context.strip())

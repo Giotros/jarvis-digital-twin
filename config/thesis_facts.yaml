@@ -1,0 +1,98 @@
+# Τα πραγματικά στοιχεία της διπλωματικής.
+#
+# Αυτό το αρχείο είναι η ΜΟΝΗ πηγή αλήθειας για ό,τι αφορά την τεχνική
+# υλοποίηση. Μπαίνει αυτούσιο στο prompt όταν ρωτάει καθηγητής ή εξεταστής.
+#
+# Γιατί υπάρχει: χωρίς αυτό, το μοντέλο απαντούσε ρευστά και λάθος —
+# «Krikri-12B», «QLoRA πάνω στο BERTweet», «ανάλυση συναισθημάτων»,
+# MongoDB, Django, TensorFlow. Τίποτα από αυτά δεν υπάρχει στο project.
+# Ένα fine-tuned μοντέλο δεν «ξέρει» τι έχτισες· μαντεύει κάτι που ακούγεται
+# σωστό. Σε εξέταση αυτό είναι το χειρότερο είδος αστοχίας, γιατί ακούγεται
+# πειστικό.
+#
+# ΚΡΑΤΑ ΤΟ ΕΝΗΜΕΡΩΜΕΝΟ. Αν αλλάξει κάτι στην υλοποίηση και δεν αλλάξει εδώ,
+# το twin θα λέει με βεβαιότητα κάτι που δεν ισχύει πια.
+
+title: >-
+  Αρχιτεκτονική Αυτόνομων Ψηφιακών Διδύμων: Ένα Κλιμακούμενο Πλαίσιο
+  Εξατομικευμένης Επικοινωνίας με χρήση Μεγάλων Ανοιχτών Γλωσσικών Μοντέλων
+
+institution: Πανεπιστήμιο Πελοποννήσου, Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
+
+base_model:
+  name: Llama-Krikri-8B-Instruct
+  publisher: ILSP / Αθηνά Ε.Κ.
+  parameters: 8 δισεκατομμύρια
+  why: >-
+    Ελληνόγλωσσο, ανοιχτό, με tokenizer προσαρμοσμένο στα ελληνικά.
+    Το Mistral-7B σπάει τις ελληνικές λέξεις σε πολύ περισσότερα tokens.
+
+fine_tuning:
+  method: QLoRA
+  quantisation: 4-bit NF4 με double quantisation
+  rank: 64
+  alpha: 128
+  target_modules: 7 (q, k, v, o, gate, up, down projections)
+  data: 13.289 ζεύγη ερώτησης-απάντησης από προσωπικές συνομιλίες
+  completed: περίπου 78% ενός epoch (checkpoint 650)
+
+distributed:
+  framework: Ray
+  api: TorchTrainer
+  strategy: data parallelism με strided sharding
+  why_not_model_parallel: >-
+    Το μοντέλο χωράει σε ένα GPU σε 4-bit, οπότε ο διαμοιρασμός βαρών
+    θα πρόσθετε επικοινωνία χωρίς όφελος.
+
+data_pipeline:
+  platform: Databricks
+  architecture: Medallion (Bronze / Silver / Gold)
+  sources: Viber SQLite export, email
+  storage: Delta Lake
+
+anonymisation:
+  structured: IBAN, ΑΦΜ με έλεγχο mod-11, ΑΜΚΑ, τηλέφωνα, email
+  finding: >-
+    Ο κανόνας κεφαλαίου γράμματος έχανε το 8,1% των ονομάτων (1.070 από
+    13.289 εγγραφές), γιατί στα casual ελληνικά κανείς δεν γράφει με
+    κεφαλαία.
+  solution: >-
+    Μορφολογική ανίχνευση με λεξικό θεμάτων και κλιτικές καταλήξεις.
+    Αποτέλεσμα: μηδέν διαρροές.
+  pitfalls: >-
+    Το casefold() στην Python μετατρέπει το τελικό σίγμα, οπότε λίστες
+    γραμμένες φυσικά δεν ταίριαζαν ποτέ. Επίσης ονόματα που είναι και
+    ημερολογιακοί όροι (Παρασκευή, Κυριακή) ή τοπωνύμια.
+
+rag:
+  retrieval: υβριδική — BM25 και dense embeddings
+  fusion: Reciprocal Rank Fusion
+  store: ChromaDB
+
+orchestration:
+  tool: n8n
+  intents: 9 κατηγορίες (personal, knowledge, casual, memory, schedule, devops, weather, news, sensitive)
+  tools: Gmail, Google Calendar, GitHub, Weather API, News API
+
+deployment:
+  runtime: Ollama, τοπικά σε Apple Silicon με Metal
+  format: GGUF Q4_K_M (περίπου 5GB)
+  adapter: >-
+    Ο adapter εφαρμόζεται κατά την εκτέλεση με τη directive ADAPTER, αντί
+    να γίνει merge στα βάρη — που θα απαιτούσε 16GB σε fp16.
+  latency: περίπου 1,5 δευτερόλεπτα ανά απάντηση
+
+evaluation:
+  metrics: >-
+    Απόσταση ύφους από τα golden examples, ποσοστό μη τεκμηριωμένων
+    ισχυρισμών, ποσοστό άρνησης, απόκλιση προς «βοηθό», λανθάνων χρόνος.
+  limitation: >-
+    Είναι λεξικοί και δομικοί προσεγγιστές, όχι σημασιολογική κρίση.
+    Η αξιολόγηση με NLI και μελέτη ανθρώπινης προτίμησης δηλώνονται ως
+    μελλοντική εργασία.
+
+known_limitations:
+  - Η εκπαίδευση δεν ολοκλήρωσε πλήρες epoch λόγω εξάντλησης GPU quota.
+  - Το πείραμα κλιμάκωσης Ray έχει μία μόνο διαμόρφωση worker.
+  - Δεν υπάρχει proactive λειτουργία — το σύστημα απαντά, δεν πρωτοβουλεί.
+  - Τα registers βασίζονται σε λέξεις-κλειδιά, όχι σε μαθημένο ταξινομητή.

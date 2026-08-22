@@ -120,3 +120,43 @@ def test_format_context_max_results():
     assert "q0" in ctx
     assert "q1" in ctx
     assert "q2" not in ctx
+
+
+# ── Context framing (regression: ungrounded_rate 0.91) ─────────
+
+from jarvis.rag.context_builder import frame_context  # noqa: E402
+
+
+def test_framing_marks_the_material_as_past():
+    """Retrieved pairs look exactly like a few-shot prompt.
+
+    format_context emits "Ερώτηση: … / Απάντηση Γιώργου: …", so under a
+    neutral heading the model continues the pattern and copies an archived
+    answer. It produced "Ναι, 06/10 θα είμαι εκεί για την εγκατάσταση του
+    νέου server" in reply to a question about nothing of the sort.
+    """
+    out = frame_context("Ερώτηση: θα ερθεις;\nΑπάντηση Γιώργου: Ναι 06/10")
+    assert "ΔΕΝ είναι η τωρινή κουβέντα" in out
+    assert "ΜΗΝ αντιγράφεις" in out
+
+
+def test_framing_delimits_the_retrieved_block():
+    """The model must be able to tell where the archive ends."""
+    out = frame_context("κάτι")
+    assert out.index("<<<ΑΡΧΕΙΟ") < out.index("κάτι") < out.index("ΤΕΛΟΣ ΑΡΧΕΙΟΥ>>>")
+
+
+def test_framing_says_it_is_allowed_to_ignore_the_archive():
+    """Retrieval always returns *something*, relevant or not.
+
+    Without explicit permission to discard it, the model treats an unrelated
+    top-scoring match as evidence — which is how casual questions came back
+    answered with e-shop chatter.
+    """
+    assert "αγνόησέ το" in frame_context("άσχετο κείμενο")
+
+
+def test_empty_context_produces_no_section():
+    """Callers concatenate unconditionally; an empty frame would be noise."""
+    assert frame_context("") == ""
+    assert frame_context("   ") == ""

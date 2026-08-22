@@ -508,6 +508,129 @@ function IntentBadge({ intent, theme }) {
   );
 }
 
+// ── Who am I talking to? ───────────────────────────────────────
+// Shown once per session, before the first message. Both fields are
+// optional: skipping them selects the neutral register, which is the
+// reserved one. Nothing typed here is stored — it lives in React state for
+// the lifetime of the tab and is sent with each request so the backend can
+// pick a tone, never to be written down.
+function SpeakerPrompt({ t, onSubmit, onSkip }) {
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+
+  const field = {
+    width: "100%",
+    padding: "10px 12px",
+    marginTop: 6,
+    borderRadius: 8,
+    border: `1px solid ${t.border}`,
+    background: t.cardBg || t.bg,
+    color: t.text,
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+  const label = { fontSize: 12, opacity: 0.7, fontWeight: 600 };
+
+  const submit = (e) => {
+    e.preventDefault();
+    onSubmit({ name: name.trim(), role: role.trim() });
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+    >
+      <form
+        onSubmit={submit}
+        style={{
+          background: t.cardBg || t.bg,
+          border: `1px solid ${t.border}`,
+          borderRadius: 14,
+          padding: 28,
+          width: "min(420px, 90vw)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+          Ποιος μου μιλάει;
+        </div>
+        <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 20, lineHeight: 1.5 }}>
+          Προσαρμόζω το ύφος μου ανάλογα. Δεν αποθηκεύεται τίποτα — μόλις
+          κλείσεις τη σελίδα, ξεχνιέται.
+        </div>
+
+        <label style={label}>
+          Όνομα
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="π.χ. Παναγιώτης"
+            style={field}
+          />
+        </label>
+
+        <div style={{ height: 14 }} />
+
+        <label style={label}>
+          Ιδιότητα
+          <input
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="π.χ. συνάδελφος, καθηγητής, φίλος"
+            style={field}
+          />
+        </label>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+          <button
+            type="submit"
+            style={{
+              flex: 1,
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: t.accent || "#6366f1",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Ξεκίνα
+          </button>
+          <button
+            type="button"
+            onClick={onSkip}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: `1px solid ${t.border}`,
+              background: "transparent",
+              color: t.text,
+              fontSize: 14,
+              cursor: "pointer",
+              opacity: 0.75,
+            }}
+          >
+            Παράλειψη
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ── Main App Component ─────────────────────────────────────────
 export default function JarvisDigitalTwin() {
   const [theme, setTheme] = useState("dark");
@@ -521,6 +644,12 @@ export default function JarvisDigitalTwin() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const [stats, setStats] = useState({ messages: 0, accuracy: 96, avgTime: 0, sources: 9 });
+
+  // Who is talking, asked once per session. Held in component state only —
+  // no localStorage, no cookie, nothing written to the server. Reloading the
+  // page forgets it, which is the intended lifetime for someone else's name.
+  const [speaker, setSpeaker] = useState({ name: "", role: "" });
+  const [askSpeaker, setAskSpeaker] = useState(true);
   const chatEndRef = useRef(null);
   const t = themes[theme];
 
@@ -577,7 +706,12 @@ export default function JarvisDigitalTwin() {
       const resp = await fetch("/webhook/twin-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, history }),
+        body: JSON.stringify({
+          message: userMsg,
+          history,
+          speaker_name: speaker.name,
+          speaker_role: speaker.role,
+        }),
       });
 
       const data = await resp.json();
@@ -635,7 +769,7 @@ export default function JarvisDigitalTwin() {
         setStats((s) => ({ ...s, messages: s.messages + 1 }));
       }, 1200);
     }
-  }, [input, animatePipeline, messages]);
+  }, [input, animatePipeline, messages, speaker]);
 
   // ── Feedback handlers ───────────────────────────────────────
   const handleFeedback = useCallback(async (msgIndex, rating) => {
@@ -700,6 +834,13 @@ export default function JarvisDigitalTwin() {
         transition: "background 0.4s ease, color 0.4s ease",
       }}
     >
+      {askSpeaker && (
+        <SpeakerPrompt
+          t={t}
+          onSubmit={(s) => { setSpeaker(s); setAskSpeaker(false); }}
+          onSkip={() => setAskSpeaker(false)}
+        />
+      )}
       <style>{`
         @keyframes pulse-ring {
           0%, 100% { opacity: 0.3; }

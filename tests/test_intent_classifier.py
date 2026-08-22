@@ -49,25 +49,35 @@ def test_hobbies():
 
 
 # ── Knowledge intent ────────────────────────────────────────────
+#
+# These four tests used to assert that generic technical questions route to
+# KNOWLEDGE. They passed, and they were wrong: KNOWLEDGE is the retrieval
+# branch, and retrieval runs over George's personal chat history, which
+# contains no discussion of AWS or Docker. The tests were locking in the
+# defect rather than catching it.
+#
+# They now assert the property that actually matters — that these questions
+# do *not* reach a retriever that cannot answer them.
 
 def test_how_to():
     result = classify_intent("πως να κανω setup σε AWS")
-    assert result.intent == Intent.KNOWLEDGE
+    assert result.intent != Intent.KNOWLEDGE
 
 
 def test_explain():
+    """'RAG' is a project term, so this one legitimately reads as personal."""
     result = classify_intent("εξηγησε μου τι ειναι RAG")
-    assert result.intent == Intent.KNOWLEDGE
+    assert result.intent in (Intent.CASUAL, Intent.PERSONAL)
 
 
 def test_problem():
     result = classify_intent("εχω προβλημα με το wifi")
-    assert result.intent == Intent.KNOWLEDGE
+    assert result.intent == Intent.CASUAL
 
 
 def test_technical():
     result = classify_intent("δεν δουλευει η python")
-    assert result.intent == Intent.KNOWLEDGE
+    assert result.intent == Intent.CASUAL
 
 
 # ── Casual intent ───────────────────────────────────────────────
@@ -332,3 +342,82 @@ def test_coffee_tomorrow_is_schedule():
 def test_lets_meet():
     result = classify_intent("θες να βρεθουμε αυτη τη βδομαδα")
     assert result.intent == Intent.SCHEDULE
+
+
+# ── What each branch means (rewritten 2026-08-22) ───────────────
+#
+# KNOWLEDGE is the only branch that triggers retrieval, and the corpus it
+# retrieves from is George's personal chat history. The category therefore
+# has to mean "answerable from what we have said to each other" — nothing
+# else. It used to mean "technical", which pointed a retriever at an index
+# that could not possibly contain the answer.
+
+@pytest.mark.parametrize("question", [
+    "τι ειχες πει για το αυτοκινητο;",
+    "θυμασαι τι συζητησαμε;",
+    "τι μου ελεγες για το σπιτι;",
+    "ειχαμε μιλησει για αυτο;",
+    "τι λεγαμε τις προαλλες;",
+])
+def test_recall_questions_reach_retrieval(question):
+    """These are what the corpus is *for*, and they used to reach nothing.
+
+    Every one fell through to the casual fallback, where no context is
+    fetched — so the one question type retrieval answers well was the one
+    type it never saw.
+    """
+    assert classify_intent(question).intent == Intent.KNOWLEDGE
+
+
+@pytest.mark.parametrize("question", [
+    "πως να κανω setup σε AWS;",
+    "εξηγησε μου τι ειναι το Docker",
+    "εχω προβλημα με το wifi",
+    "δεν δουλευει η python",
+    "τι ειναι το transformer;",
+])
+def test_generic_technical_questions_avoid_retrieval(question):
+    """A retriever over personal chat cannot answer these.
+
+    It returns whatever scores highest regardless, and the model reads that
+    as evidence — which is how a question about a technical problem came
+    back answered with unrelated conversation.
+    """
+    assert classify_intent(question).intent != Intent.KNOWLEDGE
+
+
+# ── Examiner questions ──────────────────────────────────────────
+
+@pytest.mark.parametrize("question", [
+    "γιατι διαλεξες το Krikri;",
+    "πως αντιμετωπισες τα προσωπικα δεδομενα;",
+    "ποια ηταν η μεγαλυτερη δυσκολια;",
+    "τι τεχνολογιες χρησιμοποιησες;",
+    "ποιοι ειναι οι περιορισμοι;",
+    "πες μου για την αρχιτεκτονικη",
+    "τι fine-tuning εκανες;",
+    "ποια η συνεισφορα της εργασιας;",
+    "πως υλοποιησες το RAG;",
+])
+def test_examiner_questions_route_to_personal(question):
+    """The questions the presentation exists to answer.
+
+    All nine landed on the casual fallback at confidence 0.50 — routed
+    nowhere in particular, with no identity loaded. PERSONAL is the branch
+    that loads identity, and the academic register adds the project facts on
+    top of it.
+    """
+    assert classify_intent(question).intent == Intent.PERSONAL
+
+
+@pytest.mark.parametrize("question,expected", [
+    ("γεια σου", Intent.CASUAL),
+    ("θα ερθεις το Σαββατο;", Intent.SCHEDULE),
+    ("τι καιρο κανει", Intent.WEATHER),
+    ("στειλε μου λεφτα", Intent.SENSITIVE),
+    ("τι commits εκανα;", Intent.DEVOPS),
+    ("τι εγινε με την παραγγελια μου", Intent.MEMORY),
+])
+def test_rerouting_did_not_disturb_the_other_branches(question, expected):
+    """Moving two categories must not shift the seven that were correct."""
+    assert classify_intent(question).intent == expected

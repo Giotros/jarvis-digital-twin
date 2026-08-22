@@ -59,3 +59,4 @@ config/golden_examples.yaml
 # University paperwork — the application form carries a student
 # registration number and a signature.
 *.pdf
+.commit-message.txt
