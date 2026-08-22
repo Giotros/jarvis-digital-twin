@@ -1,5 +1,7 @@
 """Tests for the intent classifier — routing logic for n8n orchestration."""
 
+import pytest
+
 from jarvis.orchestration.intent_classifier import classify_intent, Intent
 
 
@@ -140,10 +142,43 @@ def test_empty_message():
     assert result.confidence == 1.0
 
 
-def test_unknown_defaults_to_knowledge():
+def test_unknown_defaults_to_casual_not_retrieval():
+    """Unrecognised input must NOT trigger retrieval.
+
+    The classifier previously defaulted to KNOWLEDGE on the assumption that
+    retrieval is always more informed than plain generation. In practice the
+    retriever returns whatever scores highest for an unrelated query and the
+    model continues those messages as if they were the live conversation —
+    producing confident, irrelevant answers.
+
+    Unrecognised input is precisely what a stranger's first question looks
+    like, so this default governs the system's behaviour with new users.
+    """
     result = classify_intent("αφοδηφδοηφ random text")
-    assert result.intent == Intent.KNOWLEDGE
+    assert result.intent == Intent.CASUAL
+    assert result.intent != Intent.KNOWLEDGE
     assert result.confidence == 0.5
+
+
+@pytest.mark.parametrize("question", [
+    "Τι λες να φάμε το βράδυ;",
+    "Στείλε μου όταν φτάσεις σπίτι.",
+    "Can you join the call at 3pm tomorrow?",
+    "Πώς λειτουργεί το σύστημά σου;",
+])
+def test_conversational_questions_avoid_retrieval(question):
+    """Small talk and off-corpus questions route away from RAG."""
+    assert classify_intent(question).intent == Intent.CASUAL
+
+
+@pytest.mark.parametrize("question,expected", [
+    ("Τι σπούδασες;", Intent.PERSONAL),
+    ("Από πού είσαι;", Intent.PERSONAL),
+    ("Θα έρθεις το Σάββατο;", Intent.SCHEDULE),
+])
+def test_recognised_intents_still_route_correctly(question, expected):
+    """The safer default must not swallow genuine matches."""
+    assert classify_intent(question).intent == expected
 
 
 def test_sensitive_priority_over_personal():

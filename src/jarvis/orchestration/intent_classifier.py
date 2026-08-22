@@ -245,7 +245,7 @@ def classify_intent(message: str) -> ClassificationResult:
             explanation="Empty message → casual",
         )
 
-    best_intent = Intent.KNOWLEDGE  # safe default
+    best_intent = Intent.CASUAL  # see fallback note below
     best_confidence = 0.0
     best_keywords: list[str] = []
 
@@ -270,13 +270,27 @@ def classify_intent(message: str) -> ClassificationResult:
             best_intent = intent
             best_keywords = intent_keywords
 
-    # If nothing matched with decent confidence, default to KNOWLEDGE
+    # Fallback for unrecognised input.
+    #
+    # This used to default to KNOWLEDGE — commented as the "safe" choice
+    # because retrieval seemed strictly more informed than plain generation.
+    # Measurement showed the opposite. An unmatched question triggers RAG,
+    # which returns whatever past messages score highest for an unrelated
+    # query, and the model continues them as if they were the live
+    # conversation. Observed outputs: "Καλή ήταν, 5/10 θα έβαζα" to a
+    # question about a meeting, and business chatter about an e-shop in
+    # reply to "στείλε μου όταν φτάσεις σπίτι".
+    #
+    # CASUAL is the genuinely safe default: the persona answers in the
+    # subject's own voice with no retrieved material to parrot. A slightly
+    # generic answer beats a confidently irrelevant one — and unrecognised
+    # input is exactly what arrives when a stranger tries the system.
     if best_confidence < 0.5:
         return ClassificationResult(
-            intent=Intent.KNOWLEDGE,
+            intent=Intent.CASUAL,
             confidence=0.5,
             matched_keywords=[],
-            explanation="No strong pattern match → defaulting to RAG retrieval",
+            explanation="No strong pattern match → casual (no retrieval)",
         )
 
     return ClassificationResult(

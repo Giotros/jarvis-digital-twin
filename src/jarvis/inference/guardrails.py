@@ -144,6 +144,9 @@ class Guardrails:
         if not text:
             return text
 
+        # Always first: anonymisation placeholders must never reach a reader.
+        text = self._strip_anonymisation_placeholders(text)
+
         if self.clean_emojis:
             text = self._clean_emoji_artifacts(text)
         if self.remove_names:
@@ -158,6 +161,27 @@ class Guardrails:
             text = self._capitalize_sentences(text)
 
         return text.strip()
+
+    #: Placeholders the sanitiser writes into the training corpus. The model
+    #: sees ~4,700 of them during fine-tuning and learns to emit them as if
+    #: they were words — observed in production as the reply "Ναι [NAME]".
+    #: They are an artefact of the privacy pipeline leaking into the output
+    #: surface, so they are stripped unconditionally, before any other rule.
+    _PLACEHOLDER_RE = re.compile(
+        r"\s*\[(?:NAME|PERSON(?:_\d+)?|PHONE|EMAIL|IBAN|AFM|AMKA|URL|ID_CARD)\]\s*",
+        re.IGNORECASE,
+    )
+
+    def _strip_anonymisation_placeholders(self, text: str) -> str:
+        """Remove privacy placeholders and tidy the seam they leave behind.
+
+        Deleting a token mid-sentence can strand punctuation ("Ναι ,") or
+        double a space, so the gap is closed rather than merely blanked.
+        """
+        cleaned = self._PLACEHOLDER_RE.sub(" ", text)
+        cleaned = re.sub(r"\s+([,.;!?])", r"\1", cleaned)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned)
+        return cleaned.strip()
 
     def _clean_emoji_artifacts(self, text: str) -> str:
         """Remove text emoji like (laugh), (purple_heart), etc."""
