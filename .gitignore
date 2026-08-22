@@ -70,3 +70,6 @@ docker-compose.yml.bak
 docs/bibliography.md
 docs/chapter_*.md
 docs/thesis_skeleton.md
+
+# Προσχέδια αλληλογραφίας. Περιέχουν ονόματα και σημειώσεις για πρόσωπα.
+docs/email_*.md
