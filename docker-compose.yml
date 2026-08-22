@@ -102,11 +102,13 @@ services:
     environment:
       - JARVIS_ENABLED=true
       - JARVIS_OLLAMA_URL=http://host.docker.internal:11434
-      - JARVIS_OLLAMA_FALLBACK=https://confined-cursive-plating.ngrok-free.dev
+      # Fallback: ο Ollama σε Docker. Νεκρός κανονικά (το inference τρέχει
+      # native για Metal) αλλά χρήσιμος αν ο host Ollama πέσει.
+      - JARVIS_OLLAMA_FALLBACK=http://ollama:11434
       - JARVIS_MODEL=jarvis
-      - JARVIS_FALLBACK_MODEL=krikri-8b
+      - JARVIS_FALLBACK_MODEL=jarvis
       - JARVIS_CHROMA_URL=http://chromadb:8000
-      - JARVIS_CORPUS=/app/data/jarvis_training_data_sanitized.json
+      - JARVIS_CORPUS=/app/data/jarvis_training_data_v4.json
     volumes:
       - ./config:/app/config:ro
       - ./data:/app/data
