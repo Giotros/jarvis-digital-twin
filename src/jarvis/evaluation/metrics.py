@@ -232,12 +232,34 @@ def style_breakdown(a: StyleProfile, b: StyleProfile) -> dict[str, float]:
 def grounding_score(response: str, context: str, min_len: int = 4) -> float:
     """Fraction of the response's content words that appear in ``context``.
 
-    Content words are those of length ``>= min_len``, which cheaply filters
-    Greek articles and particles without a stopword list. Returns ``1.0`` for
-    a response with no content words (a bare "ναι" cannot hallucinate).
+    .. deprecated::
+       Kept so earlier numbers remain reproducible, and because the thesis
+       reports what it measured before understanding what it was measuring.
+       Use :func:`unsupported_specifics_rate` for new work.
 
-    A low score means the model asserted specifics the retrieved context does
-    not support — the signature of hallucination in a RAG pipeline.
+    **This metric rewards the failure it was written to detect.** Lexical
+    overlap is maximised by copying: a reply that repeats the retrieved
+    context verbatim scores 1.0, and verbatim repetition is precisely the
+    context-bleeding defect the pipeline was fixed to remove. Meanwhile a
+    correct, natural, slightly longer answer scores 0.29 and is counted as
+    ungrounded, because paraphrase introduces words the context does not
+    contain.
+
+    Measured on real replies from the 2026-08-22 evaluation:
+
+    ===========================================  =====
+    reply                                        score
+    ===========================================  =====
+    verbatim copy of the context                  1.00
+    correct paraphrase                            1.00
+    correct but eight words longer                0.29
+    fabricated ("Θα πάω Παρίσι")                   0.00
+    ===========================================  =====
+
+    So ``ungrounded_rate = 1.00`` never meant "the model invents everything".
+    It meant "the replies contain words not literally present in the
+    retrieved text", which is what a natural answer looks like. Fixing the
+    bleeding made this number worse.
     """
     resp_words = {w for w in _words(response) if len(w) >= min_len}
     if not resp_words:
@@ -245,6 +267,78 @@ def grounding_score(response: str, context: str, min_len: int = 4) -> float:
     ctx_norm = _normalise(context)
     supported = sum(1 for w in resp_words if _normalise(w) in ctx_norm)
     return supported / len(resp_words)
+
+
+#: Tokens worth checking against the context.
+#:
+#: A claim is checkable when getting it wrong is a factual error rather than
+#: a wording choice. Dates, times, amounts and proper nouns qualify; verbs,
+#: adjectives and function words do not. This is the distinction lexical
+#: overlap misses — it treats "εννοείται" as evidence.
+_NUMERIC = re.compile(r"\b\d[\d.,:/]*\b")
+_PROPER = re.compile(r"\b[Α-ΩΆΈΉΊΌΎΏA-Z][α-ωάέήίόύώϊϋΐΰa-z]{2,}\b")
+
+#: Capitalised words that start sentences rather than name things.
+_SENTENCE_STARTERS = frozenset({
+    "ναι", "οχι", "καλα", "ενταξει", "ωραια", "τελεια", "βεβαια",
+    "επισης", "ομως", "αλλα", "τωρα", "μετα", "αυριο", "σημερα",
+    "χθες", "παντως", "μαλλον", "ισως", "σιγουρα", "θα", "και",
+    "αν", "οταν", "γιατι", "ετσι", "λοιπον", "απλα", "μονο",
+})
+
+
+def checkable_claims(text: str) -> set[str]:
+    """Specifics in ``text`` whose truth can be checked against a source.
+
+    Proper nouns are recognised by capitalisation, which is unreliable in
+    this corpus generally — but reliable *here*, because this runs on model
+    output rather than on the user's casual typing, and the model
+    capitalises.
+    """
+    claims = {_normalise(m) for m in _NUMERIC.findall(text)}
+    for match in _PROPER.findall(text):
+        folded = _normalise(match)
+        if folded not in _SENTENCE_STARTERS:
+            claims.add(folded)
+    return claims
+
+
+def unsupported_specifics_rate(response: str, context: str) -> float:
+    """Share of checkable specifics in ``response`` absent from ``context``.
+
+    Replaces :func:`grounding_score` because it measures the thing that
+    matters: a reply may be phrased any way at all, but a date, a time or a
+    name it states has to come from somewhere. Paraphrase costs nothing here;
+    invention costs everything.
+
+    Returns ``0.0`` when the reply makes no checkable claims — "καλά, εσύ;"
+    asserts nothing and so cannot be unsupported. That is the correct answer,
+    not a gap: a metric that punished small talk for lacking evidence would
+    push the twin towards sounding like a report.
+    """
+    claims = checkable_claims(response)
+    if not claims:
+        return 0.0
+    ctx = _normalise(context)
+    return sum(1 for c in claims if c not in ctx) / len(claims)
+
+
+def verbatim_overlap(response: str, context: str, n: int = 5) -> float:
+    """Share of the reply's ``n``-grams copied word-for-word from context.
+
+    The companion to the metric above, and the reason both are needed. A
+    system can score perfectly on grounding by repeating its source, which is
+    a failure — the twin is supposed to answer, not quote. Read together:
+    low unsupported-specifics with low verbatim overlap is the target;
+    low with high means parroting.
+    """
+    words = _words(response)
+    if len(words) < n:
+        return 0.0
+    ctx = " ".join(_words(context))
+    grams = [" ".join(words[i:i + n]) for i in range(len(words) - n + 1)]
+    copied = sum(1 for g in grams if _normalise(g) in _normalise(ctx))
+    return copied / len(grams)
 
 
 def refusal_rate(responses: Sequence[str]) -> float:
@@ -380,12 +474,31 @@ def aggregate_report(
         )
 
     if contexts is not None:
-        scores = [grounding_score(r, c) for r, c in zip(responses, contexts)]
+        pairs = list(zip(responses, contexts))
+        unsupported = [unsupported_specifics_rate(r, c) for r, c in pairs]
+        copied = [verbatim_overlap(r, c) for r, c in pairs]
+        legacy = [grounding_score(r, c) for r, c in pairs]
+
         report["accuracy"] = {
-            "mean_grounding_score": round(statistics.fmean(scores), 4),
-            "ungrounded_rate": round(
-                sum(1 for s in scores if s < 0.5) / len(scores), 4
+            # The metric to read. Share of replies asserting a date, number
+            # or name the retrieved context does not contain.
+            "unsupported_rate": round(
+                sum(1 for u in unsupported if u > 0) / len(unsupported), 4
             ),
+            "mean_unsupported_specifics": round(statistics.fmean(unsupported), 4),
+            # Its counterweight. Grounding is trivially perfect for a system
+            # that quotes its source, so the two are only meaningful together.
+            "verbatim_rate": round(
+                sum(1 for c in copied if c > 0.3) / len(copied), 4
+            ),
+            "mean_verbatim_overlap": round(statistics.fmean(copied), 4),
+            # Retained for comparability with earlier runs. See the note on
+            # grounding_score: it scores verbatim copying 1.0 and correct
+            # paraphrase 0.29, so it rewards the defect it was meant to find.
+            "legacy_ungrounded_rate": round(
+                sum(1 for s in legacy if s < 0.5) / len(legacy), 4
+            ),
+            "legacy_note": "λεξική επικάλυψη — ανταμείβει την αντιγραφή",
         }
 
     if latencies_s:

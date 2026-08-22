@@ -257,3 +257,83 @@ def test_markdown_is_flat_and_paste_ready():
     assert lines[0] == "| Metric | Value |"
     assert all(line.startswith("|") for line in lines)
     assert any("reliability" in line for line in lines)
+
+
+# ── The grounding metric was measuring the wrong thing ──────────
+
+from jarvis.evaluation.metrics import (  # noqa: E402
+    checkable_claims,
+    grounding_score,
+    unsupported_specifics_rate,
+    verbatim_overlap,
+)
+
+CTX = (
+    "Ερώτηση: θα ερθεις τελικα το σαββατο;\n"
+    "Απάντηση Γιώργου: ναι θα ερθω το σαββατο κατα τις οκτω"
+)
+
+
+def test_lexical_overlap_rewards_copying():
+    """Documents the defect the replacement exists for.
+
+    A reply that repeats the retrieved context word for word scores best on
+    the old metric — and verbatim repetition is exactly the context-bleeding
+    failure the pipeline was fixed to remove. Fixing the bleeding made the
+    number worse, which is how the metric was found out.
+    """
+    copied = "ναι θα ερθω το σαββατο κατα τις οκτω"
+    paraphrase = "Ναι εννοείται θα έρθω, θα σε πάρω τηλέφωνο όταν ξεκινήσω"
+    assert grounding_score(copied, CTX) > grounding_score(paraphrase, CTX)
+
+
+@pytest.mark.parametrize("reply", [
+    "Ναι εννοείται θα έρθω",
+    "Ναι εννοείται θα έρθω το Σάββατο, θα σε πάρω τηλέφωνο όταν ξεκινήσω",
+    "Καλά, εσύ;",
+])
+def test_correct_replies_assert_nothing_unsupported(reply):
+    """Paraphrase must cost nothing. Only stated specifics are checked."""
+    assert unsupported_specifics_rate(reply, CTX) == 0.0
+
+
+@pytest.mark.parametrize("reply", [
+    "Θα πάω Παρίσι με αεροπλάνο",
+    "Ναι, 06/10 θα είμαι εκεί για την εγκατάσταση του server",
+    "Μίλησα με τον Παπαδόπουλο χθες",
+])
+def test_invented_specifics_are_caught(reply):
+    """A date, a number or a name has to come from somewhere."""
+    assert unsupported_specifics_rate(reply, CTX) > 0
+
+
+def test_small_talk_is_not_penalised_for_lacking_evidence():
+    """"Καλά, εσύ;" asserts nothing, so it cannot be unsupported.
+
+    A metric that demanded evidence from small talk would push the twin
+    towards sounding like a report — the opposite of its purpose.
+    """
+    assert unsupported_specifics_rate("Καλά, εσύ;", CTX) == 0.0
+    assert checkable_claims("Καλά, εσύ;") == set()
+
+
+def test_sentence_openers_are_not_mistaken_for_names():
+    """Greek replies start with capitalised "Ναι", "Καλά", "Αύριο"."""
+    assert checkable_claims("Ναι, καλά είμαι") == set()
+    assert "παρισι" in checkable_claims("Θα πάω Παρίσι")
+
+
+def test_verbatim_copying_is_measured_separately():
+    """Grounding is trivially perfect for a system that quotes its source.
+
+    The two numbers are only meaningful read together: low unsupported with
+    low verbatim is the target; low with high is parroting.
+    """
+    copied = "ναι θα ερθω το σαββατο κατα τις οκτω"
+    assert verbatim_overlap(copied, CTX) == 1.0
+    assert verbatim_overlap("Ναι θα περάσω, γύρω στις οκτώ", CTX) == 0.0
+
+
+def test_short_replies_are_not_scored_for_copying():
+    """Three words in common is coincidence, not quotation."""
+    assert verbatim_overlap("ναι θα ερθω", CTX) == 0.0

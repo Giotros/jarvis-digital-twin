@@ -33,12 +33,28 @@ else
     bad "corpus λείπει: $CORPUS_LOCAL"
 fi
 
-# Το corpus που δείχνει το compose πρέπει να είναι το PII-clean
-if [[ "$CORPUS" == *"_v4.json" ]]; then
-    ok "δείχνει στο v4 (PII-clean)"
-else
-    bad "δείχνει σε ΜΗ καθαρό corpus: $CORPUS"
-fi
+# Το corpus δεν πρέπει να είναι κάποιο από τα γνωστά ΜΗ καθαρά αρχεία.
+#
+# Ελέγχεται με άρνηση, όχι με λίστα επιτρεπτών εκδόσεων. Η προηγούμενη
+# μορφή ήταν `== *_v4.json`, δηλαδή καρφωμένος αριθμός έκδοσης: μόλις
+# παρήχθη το v5 — καθαρότερο από το v4 — ο έλεγχος το κατήγγειλε ως
+# μολυσμένο. Ένας έλεγχος που αποτυγχάνει όταν κάτι βελτιώνεται εκπαιδεύει
+# τον χρήστη να τον αγνοεί.
+#
+# Η πραγματική εγγύηση δίνεται από τους ελέγχους περιεχομένου στην
+# ενότητα 2, που μετράνε ονόματα αντί να διαβάζουν ονόματα αρχείων.
+case "$(basename "$CORPUS")" in
+    *sanitized*|*_v4.json)
+        bad "δείχνει σε παλιό corpus με γνωστές διαρροές: $(basename "$CORPUS")"
+        echo "        τρέξε: python3 scripts/resanitise_surnames.py --write"
+        ;;
+    *raw*|*jarvis_training_data.json)
+        bad "δείχνει στο ΑΚΑΘΑΡΤΟ corpus: $(basename "$CORPUS")"
+        ;;
+    *)
+        ok "δείχνει σε καθαρό corpus: $(basename "$CORPUS")"
+        ;;
+esac
 
 [[ -f models/jarvis-adapter.gguf ]] && ok "adapter GGUF" || bad "λείπει models/jarvis-adapter.gguf"
 [[ -f models/llama-krikri-8b-instruct-q4_k_m.gguf ]] && ok "base GGUF" || bad "λείπει το base GGUF"

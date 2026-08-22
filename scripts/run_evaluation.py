@@ -134,8 +134,12 @@ def comparison_table(report: dict) -> str:
     perf = report.get("performance", {})
 
     rows = [
-        ("Ungrounded rate", BASELINE["ungrounded_rate"],
-         acc.get("ungrounded_rate"), "↓ καλύτερο"),
+        ("Ανυποστήρικτοι ισχυρισμοί", None,
+         acc.get("unsupported_rate"), "↓ καλύτερο"),
+        ("Αυτούσια αντιγραφή", None,
+         acc.get("verbatim_rate"), "↓ καλύτερο"),
+        ("Ungrounded rate (παλιό)", BASELINE["ungrounded_rate"],
+         acc.get("legacy_ungrounded_rate"), "μη συγκρίσιμο"),
         ("Refusal rate", BASELINE["refusal_rate"],
          rel["refusal_rate"], "↑ υγιές"),
         ("First-person rate", BASELINE["first_person_rate"],
@@ -151,19 +155,32 @@ def comparison_table(report: dict) -> str:
         "|---|---:|---:|:---|",
     ]
     for name, before, after, direction in rows:
+        # Two rows have no "before": the metrics did not exist for the
+        # baseline run. Printing 0.00 there would invent a comparison.
+        before_s = "—" if before is None else f"{before:.2f}"
         after_s = "—" if after is None else f"{after:.2f}"
-        out.append(f"| {name} | {before:.2f} | **{after_s}** | {direction} |")
+        out.append(f"| {name} | {before_s} | **{after_s}** | {direction} |")
 
     n_g = acc.get("n_groundable", 0)
     n_t = acc.get("n_total", 0)
     out.append("")
     if n_g:
-        out.append(f"Το *ungrounded rate* υπολογίστηκε στις {n_g} από {n_t} "
-                   "απαντήσεις όπου το RAG παρείχε context· η casual κουβέντα "
-                   "εξαιρείται γιατί δεν έχει τι να τεκμηριώσει.")
+        out.append(f"Μετρήθηκε στις {n_g} από {n_t} απαντήσεις όπου το RAG "
+                   "παρείχε context· η casual κουβέντα εξαιρείται γιατί δεν "
+                   "έχει τι να τεκμηριώσει.")
     else:
-        out.append("Το *ungrounded rate* δεν μετρήθηκε: καμία απάντηση δεν "
-                   "συνοδεύτηκε από ανακτημένο context.")
+        out.append("Δεν μετρήθηκε: καμία απάντηση δεν συνοδεύτηκε από "
+                   "ανακτημένο context.")
+
+    out += [
+        "",
+        "Το παλιό *ungrounded rate* μετρούσε λεξική επικάλυψη και δίνεται μόνο",
+        "για ιστορική συνέχεια. Βαθμολογεί την αυτούσια αντιγραφή με 1,00 και",
+        "μια σωστή παράφραση με 0,29 — ανταμείβει δηλαδή ακριβώς την αστοχία",
+        "που διορθώθηκε. Οι δύο νέες γραμμές διαβάζονται μαζί: χαμηλοί",
+        "ανυποστήρικτοι ισχυρισμοί *με* χαμηλή αντιγραφή είναι ο στόχος·",
+        "χαμηλοί με υψηλή αντιγραφή σημαίνει ότι το σύστημα παπαγαλίζει.",
+    ]
     return "\n".join(out)
 
 
