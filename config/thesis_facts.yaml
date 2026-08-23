@@ -13,6 +13,24 @@
 # ΚΡΑΤΑ ΤΟ ΕΝΗΜΕΡΩΜΕΝΟ. Αν αλλάξει κάτι στην υλοποίηση και δεν αλλάξει εδώ,
 # το twin θα λέει με βεβαιότητα κάτι που δεν ισχύει πια.
 
+# Συμπυκνωμένη εκδοχή για το close register.
+#
+# Το πλήρες μπλοκ είναι ~715 λέξεις. Δοσμένο σε φίλο που ρωτά «τι έκανες
+# φέτος», παρήγαγε 37 λέξεις προδιαγραφών — σωστές και εντελώς εκτός ύφους,
+# όταν το μετρημένο μήκος του register είναι 6 λέξεις. Το μοντέλο
+# αναπαράγει το σχήμα αυτού που του δίνεται, οπότε ένα δελτίο προδιαγραφών
+# παράγει δελτίο προδιαγραφών.
+#
+# Δεν είναι παραγόμενη περίληψη αλλά χειρόγραφο πεδίο: ό,τι αφαιρείται εδώ
+# είναι απόφαση, όχι τυχαίο κόψιμο. Πρέπει να καλύπτει όσα θα ρωτούσε
+# κάποιος οικείος, και τίποτα παραπάνω.
+brief: >-
+  Το βασικό μοντέλο είναι το ελληνικό Krikri-8B (ΙΕΛ/Αθηνά), με QLoRA
+  fine-tuning στα δικά μου μηνύματα. Ray για την εκπαίδευση, Ollama για να
+  τρέχει τοπικά στο Mac, n8n για τη ροή. Δεν χρησιμοποιώ ChatGPT ούτε
+  cloud — όλα τοπικά. Δεν μαθαίνει από τις συνομιλίες· η επανεκπαίδευση
+  γίνεται χειροκίνητα.
+
 title: >-
   Αρχιτεκτονική Αυτόνομων Ψηφιακών Διδύμων: Ένα Κλιμακούμενο Πλαίσιο
   Εξατομικευμένης Επικοινωνίας με χρήση Μεγάλων Ανοιχτών Γλωσσικών Μοντέλων
@@ -106,8 +124,55 @@ evaluation:
     Η αξιολόγηση με NLI και μελέτη ανθρώπινης προτίμησης δηλώνονται ως
     μελλοντική εργασία.
 
+# Ρητός κατάλογος εργαλείων.
+#
+# Προστέθηκε επειδή ο έλεγχος allowlist (unsupported_technologies) βρήκε ότι
+# το ίδιο το αρχείο αλήθειας ήταν ελλιπές: PyTorch, Docker, FastAPI και Colab
+# χρησιμοποιούνται και δεν αναφέρονταν πουθενά. Η οδηγία στο τέλος του
+# αρχείου λέει «μην αναφέρεις εργαλείο που δεν γράφεται εδώ», οπότε το κενό
+# ζητούσε από το μοντέλο να ΜΗΝ πει την αλήθεια. Ένα ελλιπές αρχείο
+# θεμελίωσης δεν κάνει το σύστημα πιο προσεκτικό· το κάνει πιο ασαφές, και η
+# ασάφεια είναι το κενό που γεμίζει με επινοήσεις.
+#
+# Ό,τι δεν είναι σε αυτή τη λίστα, δεν χρησιμοποιήθηκε.
+stack:
+  languages: Python (3.11)
+  training: PyTorch, Hugging Face transformers, PEFT, bitsandbytes, TRL
+  # Τα αναπτύγματα γράφονται ρητά επειδή το μοντέλο τα επινοεί αλλιώς. Είπε
+  # «PEFT (PyTorch Elastic Framework)» και «TRL για transfer learning» —
+  # και τα δύο ακούγονται εύλογα και είναι λάθος. Ένα ακρωνύμιο χωρίς
+  # ανάπτυγμα στο prompt είναι κενό, και τα κενά γεμίζουν.
+  acronyms: >-
+    PEFT = Parameter-Efficient Fine-Tuning. TRL = Transformer Reinforcement
+    Learning. QLoRA = Quantized Low-Rank Adaptation. LoRA = Low-Rank
+    Adaptation. RAG = Retrieval-Augmented Generation. NF4 = 4-bit
+    NormalFloat. GGUF = μορφή αρχείου του llama.cpp. BM25 = Best Matching 25.
+    RRF = Reciprocal Rank Fusion.
+  distributed: Ray (TorchTrainer)
+  data: Databricks, Delta Lake, SQLite (Viber export)
+  retrieval: ChromaDB, BM25 (rank-bm25), dense embeddings
+  api: FastAPI, uvicorn, Pydantic
+  orchestration: n8n
+  runtime: Ollama (native macOS, Metal), llama.cpp GGUF
+  frontend: React με Vite
+  containers: Docker και Docker Compose
+  integrations: GitHub (ερωτήσεις devops), Gmail και Google Calendar (σχεδιασμένα, εκκρεμούν διαπιστευτήρια)
+  training_environment: Google Colab (T4/A100 ανάλογα με τη διαθεσιμότητα)
+  execution_environment: τοπικά σε Apple Silicon
+  not_used: >-
+    Kubernetes, AWS, GCP, Azure, Django, Flask, PostgreSQL, MongoDB,
+    TensorFlow, Rust, WebAssembly, blockchain, OpenAI/GPT API. Κανένα από
+    αυτά δεν υπάρχει στην εργασία, ακόμα κι αν ακούγεται εύλογο.
+
 known_limitations:
   - Η εκπαίδευση δεν ολοκλήρωσε πλήρες epoch λόγω εξάντλησης GPU quota.
   - Το πείραμα κλιμάκωσης Ray έχει μία μόνο διαμόρφωση worker.
-  - Δεν υπάρχει proactive λειτουργία — το σύστημα απαντά, δεν πρωτοβουλεί.
+  - >-
+    Η proactive λειτουργία υπάρχει ως μοντέλο βαρύτητας και κατωφλίου, αλλά
+    δεν έχει συνδεθεί με ζωντανές πηγές (Gmail/Calendar) — τα διαπιστευτήρια
+    εκκρεμούν.
   - Τα registers βασίζονται σε λέξεις-κλειδιά, όχι σε μαθημένο ταξινομητή.
+  - >-
+    Ο adapter εκπαιδεύτηκε σε corpus που περιείχε επώνυμα τρίτων. Το
+    καθαρό corpus (v5) υπάρχει, η επανεκπαίδευση εκκρεμεί, και μέχρι τότε
+    η προστασία είναι φίλτρο εξόδου και όχι απουσία από τα βάρη.

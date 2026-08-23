@@ -122,6 +122,11 @@ class GenerateResponse(BaseModel):
     #: Which register produced this reply. Reported so the behaviour is
     #: visible during a demo instead of being an unexplained tone shift.
     speaker_register: str = "neutral"
+    #: True when the first draft contradicted the project facts and was
+    #: regenerated. Surfaced rather than hidden so the evaluation chapter can
+    #: count how often grounding alone fails — the number is a result, and a
+    #: silent retry would make it unmeasurable.
+    regenerated: bool = False
 
 
 class GuardrailsRequest(BaseModel):
@@ -278,6 +283,114 @@ def rag_search(req: RAGRequest) -> RAGResponse:
         )
 
 
+async def _reject_confabulation(
+    *,
+    client: "httpx.AsyncClient",
+    url: str,
+    model: str,
+    messages: list[dict],
+    reply: str,
+    register: "persona.Register",
+    options: dict,
+) -> tuple[str, bool]:
+    """Regenerate once when the reply contradicts the project facts.
+
+    Why this exists at all: ``check_technical_claims`` was written, tested,
+    and then wired only into ``/fact-check`` — an endpoint nothing in the
+    workflow calls. The detector was correct and unreachable, so every
+    confabulation it could recognise was served to the user anyway. Running
+    the diagnostic script surfaced six invented answers in six attempts, all
+    of which the detector flagged the moment it was pointed at them.
+
+    The correction is one retry, not a rewrite. Editing a technical answer
+    by rule would mean guessing what the sentence meant to say; asking the
+    model again with the specific contradiction named is both safer and
+    honest about what happened. If the second attempt also fails, the reply
+    is replaced with a refusal rather than a third roll of the dice: an
+    examiner hearing "δεν το θυμάμαι ακριβώς" loses a point, and an examiner
+    hearing about a Kubernetes cluster that does not exist loses the thesis.
+
+    Returns ``(reply, regenerated)``.
+    """
+    from jarvis.inference.thesis_facts import (
+        check_acronym_expansions,
+        check_corrupted_names,
+        check_technical_claims,
+        unsupported_technologies,
+    )
+
+    def _problems(text: str) -> list[str]:
+        """Four checks, because each one is blind where the others see.
+
+        * **Denylist** knows *why* a claim is wrong, and cannot see anything
+          it has not been shown. Alone, it passed "Rust σε συνδυασμό με
+          WebAssembly μέσω του actix-web".
+        * **Allowlist** sees anything outside the facts, and cannot explain
+          it. Alone, it passed "PEFT (PyTorch Elastic Framework)" — the tool
+          is real and the gloss is invented.
+        * **Acronyms** catch a wrong expansion of a right name.
+        * **Near-miss** catches a right tool with wrong letters: "ChromeDB".
+
+        Each was added after the previous set reported clean on an answer
+        that was wrong. That progression is the argument for having four.
+        """
+        found = check_technical_claims(text)
+        found.extend(check_acronym_expansions(text))
+        found.extend(check_corrupted_names(text))
+        unsupported = unsupported_technologies(text)
+        if unsupported:
+            found.append(
+                "Δεν αναφέρονται στα στοιχεία της εργασίας: "
+                + ", ".join(unsupported)
+            )
+        return found
+
+    issues = _problems(reply)
+    if not issues:
+        return reply, False
+
+    correction = (
+        "Η προηγούμενη απάντησή σου περιείχε λάθος τεχνικά στοιχεία:\n"
+        + "\n".join(f"— {issue}" for issue in issues)
+        + "\n\nΞαναγράψε την απάντηση χωρίς αυτά, χρησιμοποιώντας ΜΟΝΟ όσα "
+        "αναφέρονται στα στοιχεία της διπλωματικής. Αν δεν ξέρεις κάτι, πες "
+        "το. Κράτα το ίδιο ύφος και το ίδιο μήκος."
+    )
+
+    try:
+        response = await client.post(
+            f"{url}/api/chat",
+            json={
+                "model": model,
+                "messages": [
+                    *messages,
+                    {"role": "assistant", "content": reply},
+                    {"role": "user", "content": correction},
+                ],
+                "stream": False,
+                "options": options,
+            },
+        )
+        response.raise_for_status()
+        second = _guardrails.sanitise_output(
+            response.json().get("message", {}).get("content", ""),
+            register.name,
+        )
+    except Exception:  # noqa: BLE001 — a failed retry must not lose the turn
+        second = ""
+
+    if second and not _problems(second):
+        return second, True
+
+    # Both attempts contradicted the facts. Refuse the technical claim rather
+    # than serve either draft.
+    return (
+        "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το "
+        "κοιτάξω και να σου απαντήσω με ακρίβεια.",
+        True,
+    )
+
+
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest) -> GenerateResponse:
     """Generate a response via Ollama API.
@@ -298,6 +411,7 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         name=req.speaker_name,
         role=req.speaker_role,
         identity=req.system_prompt,
+        message=req.message,
     )
 
     if req.context:
@@ -375,11 +489,28 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
                         register.name,
                     )
 
+                    reply, retried = await _reject_confabulation(
+                        client=client,
+                        url=url,
+                        model=model,
+                        messages=messages,
+                        reply=reply,
+                        register=register,
+                        options={
+                            "temperature": temperature,
+                            "top_p": req.top_p,
+                            "top_k": req.top_k,
+                            "repeat_penalty": req.repetition_penalty,
+                            "num_predict": max_new_tokens,
+                        },
+                    )
+
                     return GenerateResponse(
                         reply=reply,
                         model=model,
                         tokens_generated=data.get("eval_count", 0),
                         speaker_register=register.name,
+                        regenerated=retried,
                     )
             except (httpx.ConnectError, httpx.HTTPStatusError):
                 used_url = fallback_url

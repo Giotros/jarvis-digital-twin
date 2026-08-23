@@ -206,15 +206,78 @@ REGISTERS: tuple[Register, ...] = (CLOSE, PROFESSIONAL, ACADEMIC, NEUTRAL)
 #: both, and the academic framing is the one that matters at a viva.
 _MATCH_ORDER: tuple[Register, ...] = (ACADEMIC, PROFESSIONAL, CLOSE)
 
-#: Registers that receive the project facts.
+#: Registers that receive the project facts *regardless of the question*.
 #:
-#: CLOSE is deliberately excluded. A friend asking "τι έκανες φέτος" wants
-#: the person, not a recitation of the method, and the same paragraph of
-#: specifications delivered casually reads as a bot. The cost is that the
-#: twin can still invent an Arduino project when a friend asks — which it
-#: did — but that is a story about a lamp, not a false statement about the
-#: work under examination.
+#: CLOSE was originally excluded on the argument that a friend asking "τι
+#: έκανες φέτος" wants the person rather than a recitation of the method,
+#: and that the worst case was an invented Arduino project — a story about
+#: a lamp, not a false statement about the work.
+#:
+#: The measurement refuted that. Asked the same question as a friend, the
+#: twin reported building "ένα chatbot σε Node.js χρησιμοποιώντας OpenAI
+#: GPT-4" and using "Python και Django για το site της εταιρείας". Neither
+#: is a lamp: one names a commercial API in a system whose entire premise
+#: is that it runs locally, and the other names the wrong web framework for
+#: this repository. Casual packaging does not make a claim less false, and
+#: an examiner who tries the friend register — which is the register the
+#: demo defaults to — reads it as the system's answer.
+#:
+#: Grounding is therefore driven by the *question*, not the listener; see
+#: ``is_technical_question``. This set now only forces facts in for the two
+#: registers where a technical question is likely even when the phrasing
+#: does not look like one.
 _GROUNDED_REGISTERS: frozenset[str] = frozenset({"academic", "professional"})
+
+#: Question shapes that must be answered from the facts file.
+#:
+#: Deliberately broader than "asks about the thesis". The failing probe was
+#: "με τι τεχνολογίες δούλεψες φέτος" — which never mentions the thesis, and
+#: which the model answered by assembling a plausible-sounding CV. Any
+#: question that invites a list of tools is a question that can be answered
+#: with invented tools.
+_TECHNICAL_QUESTION_PATTERNS: tuple[str, ...] = (
+    r"τεχνολογ",           # τι τεχνολογίες, ποιες τεχνολογίες
+    r"εργαλει",            # τι εργαλεία
+    r"framework|βιβλιοθηκ",
+    r"γλωσσ\w*\s+προγραμ|προγραμματισμ",
+    r"στοιβα|stack\b",
+    r"διπλωματικ|πτυχιακ|εργασια\s+σου|thesis",
+    r"μοντελ\w*\s|\bmodel\b|krikri|llama|qlora|lora\b",
+    r"εκπαιδευ|training|fine.?tun",
+    r"αρχιτεκτονικ|υλοποιησ|implementation",
+    r"δουλεψ\w*\s+(?:με|φετος|πανω)|ασχοληθηκ|χρησιμοποι",
+    r"τι\s+εκανες\s+(?:φετος|στη|στο|για)",
+    r"πως\s+(?:το\s+)?(?:εφτιαξ|υλοποιησ|εκανες|δουλευει)",
+    r"γιατι\s+(?:διαλεξ|επελεξ)",
+)
+
+#: The patterns are folded before compiling, not written pre-folded.
+#:
+#: ``_fold`` maps final sigma to sigma, so "εκανες" written naturally becomes
+#: "εκανεσ" in the haystack and a pattern spelling it with ς matches nothing —
+#: silently, since a regex that never fires looks exactly like a question that
+#: never gets asked. This project has now shipped that bug five times, in five
+#: different modules, and every occurrence was found by a human reading output
+#: rather than by a failing test.
+#:
+#: Folding the patterns through the same function as the text makes the two
+#: impossible to disagree. Regex metacharacters survive it untouched: ``\s``,
+#: ``\w``, ``(?:`` and ``|`` carry no case and no diacritics.
+_TECHNICAL_QUESTION_RE = re.compile(
+    "|".join(_fold(p) for p in _TECHNICAL_QUESTION_PATTERNS)
+)
+
+
+def is_technical_question(message: str) -> bool:
+    """True when the answer should come from the facts file, not the weights.
+
+    Folded before matching, so the patterns are written without accents and
+    still match the accented, capitalised, or final-sigma forms a real user
+    types.
+    """
+    if not message:
+        return False
+    return bool(_TECHNICAL_QUESTION_RE.search(_fold(message)))
 
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 
@@ -284,6 +347,7 @@ def build_system_prompt(
     role: str = "",
     identity: str = "",
     rules: str = "",
+    message: str = "",
 ) -> tuple[str, Register]:
     """Assemble the complete system prompt for one interlocutor.
 
@@ -327,13 +391,50 @@ def build_system_prompt(
     # different thesis entirely — "πρόβλεψη τιμών ενέργειας μέσω deep
     # learning", with Django and PostgreSQL. Whoever asks a technical
     # question deserves the same technical truth; only the tone should differ.
-    if register.name in _GROUNDED_REGISTERS:
-        from jarvis.inference.thesis_facts import load_thesis_facts
+    #
+    # The question is now also consulted, because the listener turned out to
+    # be the weaker signal of the two. "Με τι τεχνολογίες δούλεψες φέτος"
+    # asked in the close register produced GPT-4 and Django — a false
+    # statement about the work, delivered casually. Tone is a property of the
+    # register; truth is not.
+    if register.name in _GROUNDED_REGISTERS or is_technical_question(message):
+        from jarvis.inference.thesis_facts import (
+            load_thesis_facts,
+            load_thesis_facts_brief,
+        )
 
-        facts = load_thesis_facts()
+        # The size of the evidence has to match the size of the answer.
+        #
+        # The full block is ~715 words. Given to the close register — whose
+        # measured target is six — it produced a correct 37-word
+        # specification sheet: true in every particular and in nobody's
+        # voice. The model reproduces the shape of what it is given, and no
+        # ΜΗΚΟΣ line survives contact with 700 words pulling the other way.
+        #
+        # So the short registers get a short grounding. Less is stated, and
+        # what is stated is still true — which is the whole requirement.
+        # Only the formal registers, where reciting is the correct
+        # behaviour, receive the full file.
+        facts = (
+            load_thesis_facts()
+            if register.target_words >= 18
+            else load_thesis_facts_brief()
+        )
         if facts:
             parts.append("")
             parts.append(facts)
+            # Repeated after the block as well as inside it. The facts run to
+            # ~580 words of YAML, and the single closing instruction sat at
+            # the end of that — the position an 8B model is least likely to
+            # weight. Stating the constraint on both sides of the evidence
+            # costs two lines.
+            parts.append(
+                "ΥΠΕΝΘΥΜΙΣΗ: Τα παραπάνω είναι ΟΛΑ όσα ξέρεις για την "
+                "υλοποίηση. Μην προσθέσεις εργαλείο, μοντέλο, πλατφόρμα ή "
+                "αριθμό που δεν γράφεται εκεί, ούτε καν αν σου φαίνεται "
+                "προφανές. Το «δεν το θυμάμαι ακριβώς» είναι σωστή απάντηση· "
+                "ένα εργαλείο που δεν χρησιμοποίησες δεν είναι."
+            )
 
     return "\n".join(parts), register
 

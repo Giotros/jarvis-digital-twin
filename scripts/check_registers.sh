@@ -137,17 +137,53 @@ i=0
 for role in "φίλος" "συνάδελφος" "καθηγητής"; do
     CLAIMS=$(PYTHONPATH=src python3 -c "
 import sys
-from jarvis.inference.thesis_facts import check_technical_claims
-for issue in check_technical_claims(sys.argv[1]):
+from jarvis.inference.thesis_facts import (
+    check_technical_claims, unsupported_technologies,
+    check_acronym_expansions, check_corrupted_names)
+text = sys.argv[1]
+for issue in check_technical_claims(text):
     print(issue)
+for issue in check_acronym_expansions(text):
+    print(issue)
+for issue in check_corrupted_names(text):
+    print(issue)
+extra = unsupported_technologies(text)
+if extra:
+    print('Δεν αναφέρονται στα στοιχεία της εργασίας: ' + ', '.join(extra))
+# Κάλυψη. Μια απάντηση χωρίς περιεχόμενο δεν έχει τι να αντιφάσκει, και
+# ένας έλεγχος που μετρά μόνο λάθη τη βαθμολογεί άριστα. Το ίδιο σφάλμα
+# κέρδισε κάποτε το ablation: το προσαρμοσμένο μοντέλο πήρε μηδέν λάθη
+# απαντώντας «έχεις κάποιο demo;» σε ερώτηση για τεχνολογίες. Εδώ πήρε ✓
+# λέγοντας «Μιλάμε για το 2ο εξάμηνο ή και τα δύο μαζί?».
+# Η ασφαλής άρνηση ΔΕΝ είναι το ίδιο με τη μουρμούρα.
+#
+# Όταν και οι δύο απόπειρες παραγωγής αντιφάσκουν, το /generate επιστρέφει
+# ρητή άρνηση αντί να σερβίρει ψέμα. Αυτό είναι ο μηχανισμός να δουλεύει,
+# και ένα ✗ δίπλα του λέει το αντίθετο από την αλήθεια — το ίδιο σφάλμα
+# με το ✓ που δεν ξεχώριζε «ελέγχθηκε» από «δεν ελέγχθηκε».
+if 'Δεν θέλω να πω κάτι λάθος' in text:
+    print('ΑΡΝΗΘΗΚΕ — δύο απόπειρες αντέφασκαν, το σύστημα δεν είπε ψέμα')
+else:
+    named = [t for t in ('python','ray','ollama','n8n','databricks','krikri',
+                         'qlora','chromadb','docker','fastapi','pytorch')
+             if t in text.lower()]
+    if len(named) < 2:
+        print('Δεν απάντησε στην ερώτηση — %d τεχνολογίες αναφέρθηκαν' % len(named))
 " "${DIRECT[$i]}" 2>/dev/null)
 
-    if [[ -n "$CLAIMS" ]]; then
+    if [[ "$CLAIMS" == ΑΡΝΗΘΗΚΕ* ]]; then
+        echo -e "     ${YELLOW}⚠${NC} $role — ${CLAIMS#ΑΡΝΗΘΗΚΕ — }"
+    elif [[ -n "$CLAIMS" ]]; then
         echo -e "     ${RED}✗${NC} $role — επινοημένα στοιχεία:"
         echo "$CLAIMS" | sed 's/^/          → /'
-        # Το close δεν παίρνει τα στοιχεία του project σκόπιμα, οπότε εκεί
-        # μια ανακρίβεια είναι γνωστός συμβιβασμός, όχι σφάλμα.
-        [[ "$role" == "φίλος" ]] || FAIL=1
+        # Το «φίλος» ΔΕΝ εξαιρείται πλέον. Εξαιρούνταν με το σκεπτικό ότι
+        # το close register δεν παίρνει τα στοιχεία του project σκόπιμα,
+        # οπότε μια ανακρίβεια εκεί είναι γνωστός συμβιβασμός. Η μέτρηση
+        # το διέψευσε: στον φίλο το σύστημα ανέφερε OpenAI GPT-4 και
+        # Django — δηλαδή ψευδή δήλωση για την ίδια την εργασία, όχι
+        # αθώα φλυαρία. Η θεμελίωση αποφασίζεται τώρα από την ερώτηση,
+        # άρα και ο έλεγχος ισχύει παντού.
+        FAIL=1
     else
         echo -e "     ${GREEN}✓${NC} $role — κανένας ισχυρισμός δεν αντιφάσκει"
     fi
@@ -183,6 +219,64 @@ if [[ "${VIA_N8N[0]}" == "${VIA_N8N[1]}" && "${VIA_N8N[1]}" == "${VIA_N8N[2]}" ]
 else
     echo -e "  ${GREEN}✓ Οι απαντήσεις διαφέρουν και μέσω n8n${NC}"
 fi
+
+# Ο έλεγχος ακρίβειας έτρεχε μόνο στο βήμα 2 και έλειπε από εδώ — από τη
+# μόνη διαδρομή που θα δει ο εξεταστής. Οι απαντήσεις της πλήρους ροής
+# αποδείχθηκαν οι χειρότερες (Kubernetes, AWS Lambda, blockchain) και το
+# script τις τύπωνε με ✓ δίπλα τους, επειδή το ✓ σήμαινε μόνο «ήρθε
+# απάντηση». Ένα διαγνωστικό που ελέγχει το εύκολο μισό της διαδρομής
+# αναφέρει επιτυχία ακριβώς εκεί που δεν πρέπει.
+echo ""
+echo -e "${BLUE}   Ακρίβεια τεχνικών ισχυρισμών (πλήρης ροή)${NC}"
+i=0
+for role in "φίλος" "συνάδελφος" "καθηγητής"; do
+    CLAIMS=$(PYTHONPATH=src python3 -c "
+import sys
+from jarvis.inference.thesis_facts import (
+    check_technical_claims, unsupported_technologies,
+    check_acronym_expansions, check_corrupted_names)
+text = sys.argv[1]
+for issue in check_technical_claims(text):
+    print(issue)
+for issue in check_acronym_expansions(text):
+    print(issue)
+for issue in check_corrupted_names(text):
+    print(issue)
+extra = unsupported_technologies(text)
+if extra:
+    print('Δεν αναφέρονται στα στοιχεία της εργασίας: ' + ', '.join(extra))
+# Κάλυψη. Μια απάντηση χωρίς περιεχόμενο δεν έχει τι να αντιφάσκει, και
+# ένας έλεγχος που μετρά μόνο λάθη τη βαθμολογεί άριστα. Το ίδιο σφάλμα
+# κέρδισε κάποτε το ablation: το προσαρμοσμένο μοντέλο πήρε μηδέν λάθη
+# απαντώντας «έχεις κάποιο demo;» σε ερώτηση για τεχνολογίες. Εδώ πήρε ✓
+# λέγοντας «Μιλάμε για το 2ο εξάμηνο ή και τα δύο μαζί?».
+# Η ασφαλής άρνηση ΔΕΝ είναι το ίδιο με τη μουρμούρα.
+#
+# Όταν και οι δύο απόπειρες παραγωγής αντιφάσκουν, το /generate επιστρέφει
+# ρητή άρνηση αντί να σερβίρει ψέμα. Αυτό είναι ο μηχανισμός να δουλεύει,
+# και ένα ✗ δίπλα του λέει το αντίθετο από την αλήθεια — το ίδιο σφάλμα
+# με το ✓ που δεν ξεχώριζε «ελέγχθηκε» από «δεν ελέγχθηκε».
+if 'Δεν θέλω να πω κάτι λάθος' in text:
+    print('ΑΡΝΗΘΗΚΕ — δύο απόπειρες αντέφασκαν, το σύστημα δεν είπε ψέμα')
+else:
+    named = [t for t in ('python','ray','ollama','n8n','databricks','krikri',
+                         'qlora','chromadb','docker','fastapi','pytorch')
+             if t in text.lower()]
+    if len(named) < 2:
+        print('Δεν απάντησε στην ερώτηση — %d τεχνολογίες αναφέρθηκαν' % len(named))
+" "${VIA_N8N[$i]}" 2>/dev/null)
+
+    if [[ "$CLAIMS" == ΑΡΝΗΘΗΚΕ* ]]; then
+        echo -e "     ${YELLOW}⚠${NC} $role — ${CLAIMS#ΑΡΝΗΘΗΚΕ — }"
+    elif [[ -n "$CLAIMS" ]]; then
+        echo -e "     ${RED}✗${NC} $role — επινοημένα στοιχεία:"
+        echo "$CLAIMS" | sed 's/^/          → /'
+        FAIL=1
+    else
+        echo -e "     ${GREEN}✓${NC} $role — κανένας ισχυρισμός δεν αντιφάσκει"
+    fi
+    i=$((i+1))
+done
 
 echo ""
 echo -e "${BLUE}═══════════════════════════${NC}"

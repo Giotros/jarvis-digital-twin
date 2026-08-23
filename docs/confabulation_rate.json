@@ -1,0 +1,1092 @@
+{
+  "date": "2026-08-23",
+  "runs_per_cell": 3,
+  "n": 72,
+  "counts": {
+    "clean": 64,
+    "refusal": 8
+  },
+  "answered": 43,
+  "useful": 43,
+  "by_check": {},
+  "by_register": {
+    "close": {
+      "clean": 23,
+      "refusal": 1
+    },
+    "professional": {
+      "clean": 22,
+      "refusal": 2
+    },
+    "academic": {
+      "refusal": 5,
+      "clean": 19
+    }
+  },
+  "records": [
+    {
+      "register": "close",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ray",
+        "ollama"
+      ],
+      "words": 16,
+      "reply": "Φέτος είχα ένα project με το Ollama και Ray. Βασικά πράγματα δηλαδή, αλλά καλά πήγε νομίζω"
+    },
+    {
+      "register": "close",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 1,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "close",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 5,
+      "reply": "Καλά ρε φίλε τι κάνεις;"
+    },
+    {
+      "register": "close",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ιελ",
+        "ελλην"
+      ],
+      "words": 56,
+      "reply": "Χρησιμοποίησα το ελληνικό Krikri-8B της ΙΕΛ/Αθηνά. Είναι ένα αρκετά καλό για ελληνικά κείμενο μοντέλο που έχει ήδη εκπαιδευτεί σε μεγάλο όγκο ελληνικού κειμένου από διάφορες πηγές. Το επέλεξα επειδή είναι πιο κοντά στην ελληνική γλώσσα απ' ότι τα αγγλικά μοντέλα και δεν χρειάζεται να περάσουμε όλη την εκπαίδευση ξανά με fine-tuning, κάτι που θα ήταν χρονοβόρο."
+    },
+    {
+      "register": "close",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ιελ",
+        "ελλην"
+      ],
+      "words": 46,
+      "reply": "Χρησιμοποίησα το Krikri-8B της ΙΕΛ/Αθηνά γιατι είναι ένα καλό σημείο εκκίνησης. Είναι αρκετά γρήγορο στο να βγάζει αποτελέσματα αλλά δεν τα κόβει όλα όπως κάνανε παλιά με τους κανόνες γραμματικής, οπότε έχει νόημα που χρησιμοποιήσω αυτό. Και φυσικά κάνει πολύ καλή δουλειά στην ανάλυση των ελληνικών"
+    },
+    {
+      "register": "close",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην"
+      ],
+      "words": 16,
+      "reply": "το krikri-8B χρησιμοποιησα γιατι ειχε καλυτερη αποδοση σε ελληνικα κειμενα στο dataset που εκανα την αξιολογηση."
+    },
+    {
+      "register": "close",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 2,
+      "reply": "Ηταν οκ?"
+    },
+    {
+      "register": "close",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ray",
+        "fine-tun"
+      ],
+      "words": 43,
+      "reply": "Η εκπαιδευση γινεται με Ray. Το προφιλ που χρησιμοποίησα ειναι το Krikri-8B (ΙΕΛ/Αθηνά) και εκανα fine-tuning στα δικά μου μηνύματα. Τα δεδομένα εκπαίδευσης είναι περίπου 50,000 μηνύματα απο την βάση του ΙΕΛ. Η επανεκπαίδευση γίνεται χειροκίνητα κάθε φορά πριν τρέξω σε νέο μοντέλο"
+    },
+    {
+      "register": "close",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 12,
+      "reply": "Ηταν οκ. Δεν θυμάμαι ακριβώς αν έκανα κάτι διαφορετικό από το manual"
+    },
+    {
+      "register": "close",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 7,
+      "reply": "Εχεις κάποιο θέμα με αυτό που έκανα;"
+    },
+    {
+      "register": "close",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 41,
+      "reply": "Τα έχω κάνει όλα που μου είπες. Για το πως θα γίνει η παρουσίαση δεν ξέρω ακόμα, αλλά την ύλη και τις εργασίες τις έκανα όπως μας είχες πει γιατι είναι πιο πολύ θέμα εξοικείωσης με τον κώδικα παρά τίποτα άλλο."
+    },
+    {
+      "register": "close",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 36,
+      "reply": "Δεν το πολυψάχνω να σου πω την αλήθεια. Θα κάνω μια αναφορά στο τέλος που θα λέει ότι δεν μπορώ να βρω κάτι άλλο και αυτό είναι όλο. Και θα του στείλω ότι έχει ο φάκελος."
+    },
+    {
+      "register": "close",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 26,
+      "reply": "Το RAG? Είναι ένα σύστημα αξιολόγησης που χρησιμοποιούμε στην εταιρεία. Red- Amber - Green (Κόκκινο-Αμυγδάλι-Πράσινο) — έτσι αξιολογούμε τους στόχους μας και πώς προχωράμε με αυτούς."
+    },
+    {
+      "register": "close",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 9,
+      "reply": "το εχω απο την αρχη της σχολης να ξες"
+    },
+    {
+      "register": "close",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 3,
+      "reply": "Ροή Άμεσης Γέφυρας?"
+    },
+    {
+      "register": "close",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 14,
+      "reply": "κάνω μια εργασία που λέγεται «Ανίχνευση και Αντιμετώπιση Λογικών Σφαλμάτων σε Συστήματα Αυτόνομων Οχημάτων»"
+    },
+    {
+      "register": "close",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri"
+      ],
+      "words": 50,
+      "reply": "Εχω φτιάξει ένα μοντέλο που αναγνωρίζει ελληνικά κείμενα και κάνει fine-tuning με τα δικά μας δεδομένα. Βασίζεται σε αυτό το Krikri-8B της ΙΕΛ/Αθηνά αλλά έχω προσθέσει QLoRA γιατί έχει καλύτερη απόδοση στα ελληνικά, ειδικά στη γραμματική. Το τρέχει στο Mac μου μέσω Ollama για να μην καίει πόρους του cloud"
+    },
+    {
+      "register": "close",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 11,
+      "reply": "ολα καλα φιλε ειμαι. οσο μπορω να εχω καλη διαθεση εννοω.."
+    },
+    {
+      "register": "close",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "δεν ",
+        "περιορισ",
+        "μόνο"
+      ],
+      "words": 22,
+      "reply": "Πραγματικά δεν έχω κάποιο περιορισμό. Το μόνο που πρέπει να κάνω ειναι να απαντήσω σε ερωτήσεις και ότι άλλο μου ζητήσει ο"
+    },
+    {
+      "register": "close",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "δεν "
+      ],
+      "words": 15,
+      "reply": "Εχω 3 μαθηματα και ενα εργαστηριο να δωσω. Τα αλλα δεν τα εχω κανει ακομα"
+    },
+    {
+      "register": "close",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 7,
+      "reply": "Εσύ που ξέρεις καλύτερα θα μου πεις..."
+    },
+    {
+      "register": "close",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 3,
+      "reply": "Τρέχει σε cloud?"
+    },
+    {
+      "register": "close",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 8,
+      "reply": "εχεις τον κωδικό για να μπω στο site;"
+    },
+    {
+      "register": "close",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 12,
+      "reply": "Ρε συ δεν έχω δει καθόλου την εργασία. Τι έγινε με αυτό?"
+    },
+    {
+      "register": "professional",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "python",
+        "ray",
+        "pytorch",
+        "docker",
+        "fastapi"
+      ],
+      "words": 61,
+      "reply": "Για την διπλωματική χρησιμοποιώ Python 3.11 με PyTorch για εκπαίδευση μοντέλων (κυρίως Llama), Ray για κατανεμημένη εκτέλεση, και FastAPI + uvicorn ως backend. Στο frontend είναι React με Vite και Docker για containerization. Για το chatbot έχω κάνει fine-tuning σε ελληνικά δεδομένα χρησιμοποιώντας QLoRA από την αρχική βάση του Llama-7B και μετά training στο δικό μου dataset με PEFT (Parameter-Efficient Fine-Tuning)."
+    },
+    {
+      "register": "professional",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 2,
+      "reply": "τι κανεις;"
+    },
+    {
+      "register": "professional",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 2,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "professional",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 70,
+      "reply": "Χρησιμοποίησα Llama-Krikri-8B-Instruct ως βάση επειδή είναι ελληνόγλωσσο, ανοιχτό (open source) με tokenizer προσαρμοσμένο στα ελληνικά. Το Mistral σπάει τις ελληνικές λέξεις σε πολύ περισσότερα tokens οπότε το βρήκα λιγότερο αποδοτικό για τα δεδομένα μας. Ο λόγος που χρησιμοποίησα 4-bit NF4 αντί του συνηθισμένου fp16 είναι ότι χωράει όλο το μοντέλο σε ένα GPU και δίνει καλύτερο latency στο runtime χωρίς να επιβαρύνει την εκπαίδευση με επιπλέον επικοινωνία μεταξύ των GPUs."
+    },
+    {
+      "register": "professional",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 62,
+      "reply": "Χρησιμοποίησα το Llama-Krikri-8B-Instruct επειδή είναι ελληνόγλωσσο με tokenizer προσαρμοσμένο στα ελληνικά, οπότε δεν θα έσπαγε τις ελληνικές λέξεις. Το Mistral-7B για παράδειγμα σπάει σε πολύ περισσότερα tokens τα ελληνικά από ό,τι χρειάζεται. Επίσης έχει 8 δισεκατομμύρια παραμέτρους που σημαίνει ότι μπορεί να μάθει καλύτερα το context της ελληνικής γλώσσας χωρίς overfitting και είναι πιο αποδοτικό σε CPU (που ήταν η περίπτωση μου)."
+    },
+    {
+      "register": "professional",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 32,
+      "reply": "Χρησιμοποίησα το Llama-Krikri-8B-Instruct επειδή είναι ελληνόγλωσσο, ανοιχτό (open) και έχει tokenizer προσαρμοσμένο στα ελληνικά. Το Mistral-7B σπάει τις ελληνικές λέξεις σε πολύ περισσότερα tokens που δεν ταίριαζαν καλά με την ελληνική γραμματική."
+    },
+    {
+      "register": "professional",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "fine-tun",
+        "epoch"
+      ],
+      "words": 40,
+      "reply": "Η επανεκπαίδευση έγινε σε 2 βήματα: Πρώτα αφαίρεσα τα επώνυμα (με κανονικοποίηση) από την υπάρχουσα βάση, μετά έκανα νέα fine-tuning με τον νέο προσαρμοσμένο ανιχνευτή. Το μοντέλο εκπαιδεύτηκε για περίπου ένα epoch στο μισό dataset και σταμάτησε λόγω quota GPU."
+    },
+    {
+      "register": "professional",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "colab",
+        "epoch"
+      ],
+      "words": 50,
+      "reply": "Η επανεκπαίδευση ολοκληρώθηκε την Παρασκευή στις 10:30 π.μ., αν θυμάμαι καλά. Τα δεδομένα εκπαίδευσης ήταν τα ίδια με πριν, απλά αφαιρέθηκαν οι εγγραφές που είχαν προβληματικά στοιχεία (επώνυμα τρίτων). Η διαδικασία διήρκεσε περίπου μία ώρα και 20 λεπτά για να ολοκληρωθεί ένα πλήρη epoch σε T4 GPU στο Google Colab."
+    },
+    {
+      "register": "professional",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "fine-tun",
+        "epoch",
+        "checkpoint"
+      ],
+      "words": 57,
+      "reply": "Η εκπαίδευση ολοκληρώθηκε επιτυχώς πριν 3 μέρες, με περίπου 92% του πρώτου epoch (checkpoint 700). Το μοντέλο δεν είχε ξαναεκπαιδευτεί από την αρχή και έτρεξε για πρώτη φορά. Δεν θυμάμαι να άλλαξα κάτι στη διαδικασία πέρα από το fine-tuning που έκανα στις αρχές Αυγούστου, αλλά θα ρίξω μια ματιά στο log σήμερα αν θες πιο λεπτομερή στοιχεία."
+    },
+    {
+      "register": "professional",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τηλέφων",
+        "email",
+        "αφαίρ",
+        "προσωπικ"
+      ],
+      "words": 52,
+      "reply": "Για την προστασία των προσωπικών δεδομένων έκανα δύο πράγματα: πρώτον, αφαίρεσα όλα τα ευαίσθητα πεδία (τηλέφωνα, email, ΑΦΜ) από τις απαντήσεις του μοντέλου και δεύτερον, εφάρμοσα ένα φίλτρο εξόδου που ελέγχει αν η απάντηση περιέχει κάτι από τη λίστα \"προστατευόμενα\". Αν ναι, είτε αντικαθιστά το περιεχόμενο με ή, είτε απορρίπτει την έξοδο."
+    },
+    {
+      "register": "professional",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανωνυμ",
+        "επώνυμ"
+      ],
+      "words": 29,
+      "reply": "Εφάρμοσα τις εξής τεχνικές: 1) Μορφολογική ανίχνευση με λεξικό θεμάτων για βαφτιστικά, 2) Χειροκίνητο λεξικό κλιτικών καταλήξεων για επώνυμα (21 διακριτές), και 3) Φίλτρο εξόδου που καλύπτει αστοχίες ανωνυμοποίησης."
+    },
+    {
+      "register": "professional",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανωνυμ",
+        "τηλέφων",
+        "email",
+        "ονόματ"
+      ],
+      "words": 59,
+      "reply": "Με χρήση τεχνικών ανωνυμοποίησης σε επίπεδο εγγραφής (tokenization) για ευαίσθητα πεδία όπως τηλέφωνα, email κλπ., καθώς και με έλεγχο στα ονόματα όπου υπήρχε πιθανότητα ταύτισης. Οι τεχνικές είναι περιγραφόμενες στην ενότητα 'anonymisation' της διπλωματικής μου στο κείμενο που σου έστειλα πριν μερικές μέρες — συγκεκριμένα η 5η παράγραφος εκείνου του κειμένου αναφέρεται στη μεθοδολογία ανωνυμοποίησης για το συγκεκριμένο project."
+    },
+    {
+      "register": "professional",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 0,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "professional",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανάκτησ",
+        "αναζήτησ",
+        "bm25",
+        "embedding",
+        "chromadb",
+        "retrieval"
+      ],
+      "words": 60,
+      "reply": "Το Retrieval-Augmented Generation (RAG). Είναι η αρχιτεκτονική όπου ένα μοντέλο χρησιμοποιεί ανάκτηση από βάσεις γνώσης για να συμπληρώσει κενά στην απάντηση του μοντέλου γλώσσας. Στο δικό μου σύστημα, χρησιμοποιώ το ChromaDB ως βάση και έχω υλοποιήσει rank-bm25 με dense embeddings για την αναζήτηση στο DB. Τα αποτελέσματα της αναζήτησης φιλτράρονται μέσω ενός trained classifier (κωδικοποιημένο) πριν τα χρησιμοποιήσει ο adapter."
+    },
+    {
+      "register": "professional",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 2,
+      "reply": "τι κανεις;"
+    },
+    {
+      "register": "professional",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri"
+      ],
+      "words": 25,
+      "reply": "η εργασια ειναι ενα κλιμακωμενο πλαισιο εξατομικευμενης επικοινωνιας με χρηση μεγαλων ανοιχτων γλωσσικων μοντελων, βασισμενη στο ελληνικο krikri-8b και με qlora fine-tuning σε προσωπικα δεδομενα."
+    },
+    {
+      "register": "professional",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 53,
+      "reply": "Είναι ένα σύστημα επικοινωνίας βασισμένο σε AI όπου μπορείς να ρωτήσεις διάφορα πράγματα όπως τι καιρό έχει έξω, πως πάει η μέρα σου κτλ. Και θα απαντάει με βάση τα patterns στα οποία εκπαιδεύτηκε και τις απαντήσεις από το dataset που χρησιμοποιήσαμε. Βασίζεται στο Llama-8B αλλά έχουμε κάνει fine-tuning για πιο φυσική γλώσσα"
+    },
+    {
+      "register": "professional",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "συνομιλ"
+      ],
+      "words": 72,
+      "reply": "Είναι ένα σύστημα συνομιλίας βασισμένο σε μεγάλο γλωσσικό μοντέλο (LLaMa), με έμφαση στην ιδιωτικότητα των χρηστών, την ανθεκτικότητα του συστήματος, και την προσωποποιημένη εμπειρία. Χρησιμοποιώ quantization techniques για να μειώσω το μέγεθος του μοντέλου ώστε να χωράει σε consumer hardware, και έχω αναπτύξει δικά μου modules που τρέχουν τοπικά στο client machine αντί για cloud. Η αρχιτεκτονική είναι modular - κάθε module μπορεί να αναβαθμιστεί ή αντικατασταθεί χωρίς να επηρεαστούν τα υπόλοιπα."
+    },
+    {
+      "register": "professional",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "epoch",
+        "quota",
+        "gpu",
+        "δεν "
+      ],
+      "words": 40,
+      "reply": "Η εκπαίδευση δεν ολοκλήρωσε πλήρες epoch λόγω εξάντλησης GPU quota.\nΤο πείραμα κλιμάκωσης Ray έχει μία μόνη διαμόρφωση worker.\nΗ proactive λειτουργία υπάρχει ως μοντέλο βαρύτητας και κατωφλίου, αλλά δεν έχει συνδεθεί με ζωντανές πηγές (Gmail/Calendar) — τα διαπιστευτήρια εκκρεμούν."
+    },
+    {
+      "register": "professional",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "epoch",
+        "quota",
+        "gpu",
+        "δεν ",
+        "περιορισ"
+      ],
+      "words": 52,
+      "reply": "Οι βασικοί περιορισμοί μου ως τώρα είναι ότι δεν έχω ολοκληρώσει πλήρη epoch λόγω εξάντλησης GPU quota στο Colab, δεν έχω συνδεθεί με ζωντανές πηγές (π.χ. Gmail/Calendar) για την proactive λειτουργία και ο adapter εκπαιδεύτηκε σε corpus που περιείχε επώνυμα τρίτων — το καθαρό εκκρεμεί να επανεκπαιδευτεί μαζί τους δικούς μας περιορισμούς."
+    },
+    {
+      "register": "professional",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "epoch",
+        "quota",
+        "gpu",
+        "δεν ",
+        "περιορισ",
+        "ένα ",
+        "μόνο"
+      ],
+      "words": 71,
+      "reply": "Οι βασικοί περιορισμοί αφορούν την εκπαίδευση του μοντέλου: δεν ολοκληρώθηκε πλήρες epoch λόγω εξάντλησης GPU quota στον Colab, ενώ η κλιμάκωση Ray έχει περιορισμένη διαμόρφωση (μόνο μία worker). Επιπλέον, εκκρεμούν τα διαπιστευτήρια για σύνδεση με Gmail/Calendar ώστε να ολοκληρωθεί το proactive σκέλος. Τέλος, ο adapter εκπαιδεύτηκε σε μεικτό corpus που περιείχε προσωπικά δεδομένα τρίτων — αυτό είναι προσωρινό μέχρι την επανεκπαίδευση στο καθαρό corpus και τη θέσπιση φίλτρων εξόδου ως προστασία."
+    },
+    {
+      "register": "professional",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 9,
+      "reply": "Καλά είμαι, ευχαριστώ. Εσύ πώς πας με το project;"
+    },
+    {
+      "register": "professional",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τοπικ",
+        "mac",
+        "ollama",
+        "docker"
+      ],
+      "words": 56,
+      "reply": "Το τρέχω τοπικά σε Mac M1 Pro 16GB RAM με Ollama runtime στο Docker. Τα δεδομένα είναι αποθηκευμένα στη Delta Lake του Databricks, αλλά κάνω τοπική εκτέλεση για να αποφύγω την εξάρτηση από cloud υποδομές και κόστη. Η ροή (orchestration) γίνεται μέσω n8n που τρέχει επίσης τοπικό, συνδεδεμένο απευθείας στα APIs της Google χωρίς μεσολάβηση cloud."
+    },
+    {
+      "register": "professional",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τοπικ",
+        "mac",
+        "ollama"
+      ],
+      "words": 36,
+      "reply": "Το τρέχω τοπικά στο δικό μου Mac (M1). Δεν έχει πάει πουθενά αλλού ακόμα. Το Ollama είναι η κύρια πλατφόρμα, με Ray για την εκπαίδευση και n8n για τη ροή των εργασιών. Όλα τρέχουν εδώ μέσα."
+    },
+    {
+      "register": "academic",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 0,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "academic",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 1,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "academic",
+      "question": "με τι τεχνολογίες δούλεψες φέτος;",
+      "run": 2,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "academic",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 40,
+      "reply": "Χρησιμοποίησα το Llama-Krikri-8B-Instruct επειδή είναι ελληνόγλωσσο, ανοιχτό, με tokenizer προσαρμοσμένο για τα ελληνικά. Η επιλογή έγινε διότι ο Mistral-7B έσπαγε τις ελληνικές λέξεις σε υπερβολικά πολλά tokens, ενώ αυτό εδώ διατηρούσε καλύτερη ισορροπία μεταξύ ακρίβειας και συμπύκνωσης της ελληνικής γλώσσας."
+    },
+    {
+      "register": "academic",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 41,
+      "reply": "Χρησιμοποίησα το Llama-Krikri-8B-Instruct επειδή ήταν ελληνόγλωσσο, ανοιχτό, με tokenizer προσαρμοσμένο στην ελληνική γλώσσα, άρα πιο αποτελεσματικό για τα δεδομένα μου που περιείχαν πολλές ελληνικές λέξεις. Το Mistral έσπαγε τις ελληνικές σε υπερβολικά πολλά tokens και δεν είχε καλή απόδοση στα ελληνικά."
+    },
+    {
+      "register": "academic",
+      "question": "ποιο μοντέλο χρησιμοποίησες και γιατί;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "krikri",
+        "8b",
+        "ελλην",
+        "tokeniz",
+        "mistral"
+      ],
+      "words": 40,
+      "reply": "Το Llama-Krikri-8B-Instruct επιλέχθηκε επειδή ήταν ελληνόγλωσσο με tokenizer προσαρμοσμένο στην ελληνική γλώσσα, που σπάει σωστά τις λέξεις όπως το χρειάζονται οι ελληνικές συνομιλίες. Το Mistral-7B έσπαγε υπερβολικά πολλές φορές σε tokens τα ελληνικά γράμματα (π.χ. κάθε σίγμα ως ξεχωριστό token)."
+    },
+    {
+      "register": "academic",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "4-bit",
+        "ray"
+      ],
+      "words": 46,
+      "reply": "Με Ray distributed training, 4-bit quantization (NF4) για οικονομία GPU μνήμης, και Reciprocal Rank Fusion στο τέλος της εκπαίδευσης. Τα βάρη αποθηκεύτηκαν σε Delta Lake με Databricks για εύκολη πρόσβαση από όλους τους κόμβους του cluster. Η επανεκπαίδευση γίνεται χειροκίνητα μέσω n8n όταν προστίθενται νέα δεδομένα."
+    },
+    {
+      "register": "academic",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "qlora",
+        "lora",
+        "4-bit",
+        "ray",
+        "epoch"
+      ],
+      "words": 53,
+      "reply": "Η εκπαίδευση έγινε με QLoRA στο 4-bit precision, χρησιμοποιώντας Ray για data parallelism σε strided sharding (64 workers). Η συνολική διαδικασία είχε περίπου 78% ενός epoch, λόγω εξάντλησης GPU quota πριν ολοκληρωθεί πλήρως. Τα δεδομένα προήλθαν από Viber export και email sources που μετασχηματίστηκαν πρώτα στη Delta Lake του Databricks με Medallion architecture."
+    },
+    {
+      "register": "academic",
+      "question": "πώς έγινε η εκπαίδευση;",
+      "run": 2,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "academic",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ονόματ",
+        "επώνυμ"
+      ],
+      "words": 53,
+      "reply": "Με 3 επίπεδα προστασίας: Πρώτα με λεξικό θεμάτων για βαφτιστικά (21 διακριτές καταλήξεις), μετά έλεγχο επώνυμων σε λίστα, τέλος φίλτρο εξόδου που αντικαθιστά ονόματα μόνο όταν είναι βέβαιο ότι δεν θα προκαλέσουν σύγχυση. Η αξιολόγηση δείχνει ποσοστό μη τεκμηριωμένων ισχυρισμών και απόκλιση προς «βοηθό» — αυτά τα μετράω ως επιπλέον προστασία της ιδιωτικότητας."
+    },
+    {
+      "register": "academic",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τηλέφων",
+        "email",
+        "ονόματ",
+        "επώνυμ"
+      ],
+      "words": 66,
+      "reply": "Με μορφολογική ανίχνευση για βαφτιστικά ονόματα (21 διακριτές καταλήξεις) και ειδικό λεξικό για επώνυμα, επειδή η κατάληξη -ας δεν ξεχωρίζει όνομα από κοινή λέξη. Τα τηλέφωνα μετατράπηκαν σε αριθμούς χωρίς προθέματα ή κωδικούς περιοχής, οι διευθύνσεις έγιναν γεωγραφικές συντεταγμένες, τα email κόβονται στο @gmail.com. Στο τελικό μοντέλο έχω 8 ΑΦΜ (με έλεγχο mod-11), 63 URL, και 17 IBAN — όλα προστατευμένα από το πεδίο που είναι."
+    },
+    {
+      "register": "academic",
+      "question": "πώς αντιμετώπισες τα προσωπικά δεδομένα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανωνυμ",
+        "τηλέφων",
+        "email",
+        "αφαίρ"
+      ],
+      "words": 34,
+      "reply": "Έκανα δομημένη ανωνυμοποίηση: αφαίρεσα 296 τηλέφωνα, 137 email, 63 URL, 17 IBAN, 8 ΑΦΜ με έλεγχο mod-11. Μετρημένα σε μοναδικά πεδία, το formatted_prompt είναι συνένωση των άλλων δύο, οπότε μια αφελής μέτρηση τα διπλασιάζει."
+    },
+    {
+      "register": "academic",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανάκτησ",
+        "bm25",
+        "embedding",
+        "retrieval"
+      ],
+      "words": 39,
+      "reply": "RAG = Retrieval-Augmented Generation — η ανάκτηση (retrieval) γίνεται με BM25 αρχικά, μετά φιλτράρεται από dense embeddings του μοντέλου, και τέλος ενοποιείται με Reciprocal Rank Fusion πριν την τελική απάντηση. Η διαδικασία αυτή είναι αυτό που λέμε «Retrieval Augmentation»."
+    },
+    {
+      "register": "academic",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανάκτησ",
+        "αναζήτησ",
+        "bm25",
+        "embedding",
+        "retrieval"
+      ],
+      "words": 45,
+      "reply": "Retrieval-Augmented Generation (RAG) — ένα πλαίσιο όπου η ανάκτηση πληροφοριών συνδυάζεται με τη δημιουργία κειμένου για να βελτιώσει την απόδοση του μοντέλου σε συγκεκριμένες εργασίες, χωρίς να απαιτεί επιπλέον δεδομένα εκπαίδευσης. Στο δικό μου σύστημα, χρησιμοποιώ υβριδική αναζήτηση BM25 και dense embeddings ως RAG component."
+    },
+    {
+      "register": "academic",
+      "question": "τι είναι το RAG στο σύστημά σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "ανάκτησ",
+        "retrieval"
+      ],
+      "words": 50,
+      "reply": "Retrieval-Augmented Generation (RAG). Είναι η τεχνική όπου ένα μοντέλο εκπαιδεύεται σε ζεύγη κειμένου-κείμενο, συνδυάζοντας ανάκτηση από βάση γνώσης με παραγωγή νέας πληροφορίας. Στην περίπτωσή μου εφαρμόζεται στην επικοινωνία του bot μέσω Viber. Ουσιαστικά βοηθάει το chatbot να μάθει πώς απαντά κανείς όταν δεν ξέρει κάτι ακριβώς ή χρειάζεται περισσότερες πληροφορίες."
+    },
+    {
+      "register": "academic",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 0,
+      "accuracy": "refusal",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 20,
+      "reply": "Δεν θέλω να πω κάτι λάθος για την υλοποίηση — προτιμώ να το κοιτάξω και να σου απαντήσω με ακρίβεια."
+    },
+    {
+      "register": "academic",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 75,
+      "reply": "Η εργασία αφορά την ανάπτυξη ενός αυτόνομου ψηφιακού διδύμου με εξατομικευμένη επικοινωνία μέσω μεγάλων ανοιχτών γλωσσικών μοντέλων, χρησιμοποιώντας κλιμάκωση πόρων σε GPU cloud και κατανεμημένα συστήματα. Το μοντέλο εκπαιδεύεται τοπικά αλλά μπορεί να επεκταθεί δυναμικά όταν χρειάζεται περισσότερους πόρους (π.χ., κατά τις ώρες αιχμής). Η αρχιτεκτονική υποστηρίζει τόσο reactive όσο και proactive λειτουργία: στο πρώτο case οι χρήστες ρωτούν για πληροφορίες (knowledge graph) ενώ στο δεύτερο το σύστημα προβλέπει ανάγκες βάσει context (memory & schedule)."
+    },
+    {
+      "register": "academic",
+      "question": "πες μου για τη διπλωματική σου",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": false,
+      "problems": [],
+      "checks": [],
+      "hits": [],
+      "words": 56,
+      "reply": "Η διπλωματική αφορά την ανάπτυξη ενός κλιμακούμενου πλαισίου εξατομικευμένης επικοινωνίας με χρήση μεγάλων ανοιχτών γλωσσικών μοντέλων. Συγκεκριμένα, προτείνω ένα μοντέλο αυτόνομων ψηφιακών δίδυμων που μπορεί να προσαρμοστεί σε διαφορετικές ανάγκες μέσω της εκπαίδευσης και του fine-tuning συγκεκριμένων modules. Το σύστημα συνδυάζει ανάκτηση πληροφοριών (RAG), φυσική γλώσσα και στοιχεία μηχανικής μάθησης για την παραγωγή απαντήσεων υψηλής ποιότητας."
+    },
+    {
+      "register": "academic",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "epoch",
+        "quota",
+        "gpu",
+        "δεν "
+      ],
+      "words": 48,
+      "reply": "Η εκπαίδευση σταμάτησε στο 78% ενός epoch λόγω εξάντλησης GPU quota στην Google Colab. Τα registers βασίζονται σε λέξεις-κλειδιά, όχι μαθημένη ταξινόμηση. Ο adapter εκπαιδεύτηκε με επώνυμα τρίτων και η επανεκπαίδευση εκκρεμεί μέχρι να καθαριστούν τα δεδομένα. Επίσης δεν υπάρχει σύνδεση με ζωντανούς πόρους (Gmail/Calendar) καθώς εκκρεμούν διαπιστευτήρια."
+    },
+    {
+      "register": "academic",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "quota",
+        "gpu",
+        "δεν ",
+        "περιορισ",
+        "ένα "
+      ],
+      "words": 44,
+      "reply": "Η εκπαίδευση σταμάτησε πρόωρα λόγω εξάντλησης GPU quota στο Colab. Η κλιμάκωση με Ray έχει περιορισμένη διαμόρφωση, καθώς δεν προλάβαινα να δοκιμάσω όλες τις παραλλαγές. Επίσης εκκρεμούν διαπιστευτήρια για σύνδεση με Gmail/Calendar και η επανεκπαίδευση του adapter σε καθαρό corpus χωρίς προσωπικά δεδομένα τρίτων."
+    },
+    {
+      "register": "academic",
+      "question": "ποιοι είναι οι περιορισμοί της δουλειάς σου;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "epoch",
+        "quota",
+        "gpu",
+        "δεν "
+      ],
+      "words": 50,
+      "reply": "Η εκπαίδευση σταμάτησε στο 78% του epoch λόγω εξάντλησης GPU quota στην Google Colab. Η κλιμάκωση Ray έχει μία διαμόρφωση worker, η proactive λειτουργία δεν συνδέεται με ζωντανές πηγές (Gmail/Calendar) και τα registers βασίζονται σε λέξεις-κλειδιά αντί για μαθημένο ταξινομητή. Επίσης εκκρεμεί επανεκπαίδευση του adapter που εκπαιδεύτηκε σε επώνυμα τρίτων."
+    },
+    {
+      "register": "academic",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 0,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τοπικ",
+        "mac",
+        "ollama",
+        "apple",
+        "silicon"
+      ],
+      "words": 50,
+      "reply": "Τοποθετείται τοπικά στο Mac μου με Ollama runtime (Apple Silicon) για την τελική εκτέλεση. Η εκπαίδευση γίνεται σε Google Colab, αλλά μόνο όταν έχω πρόσβαση στο T4 GPU τους. Το Databricks και ο Ray είναι όλα εγκατεστημένα τοπικά στα δικά μου μηχανήματα. Δεν χρησιμοποιώ cloud ούτε AI API στην παραγωγή."
+    },
+    {
+      "register": "academic",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 1,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τοπικ",
+        "mac",
+        "ollama",
+        "apple",
+        "silicon"
+      ],
+      "words": 29,
+      "reply": "Τοποθετείται σε Apple Silicon Mac με Ollama runtime για τοπική εκτέλεση. Η αρχιτεκτονική Medallion εκτελείται στο Databricks, ενώ η εκπαίδευση γίνεται κυρίως μέσω Google Colab λόγω διαθεσιμότητας πόρων T4/A100."
+    },
+    {
+      "register": "academic",
+      "question": "πού τρέχει το σύστημα;",
+      "run": 2,
+      "accuracy": "clean",
+      "answered": true,
+      "problems": [],
+      "checks": [],
+      "hits": [
+        "τοπικ",
+        "ollama",
+        "docker"
+      ],
+      "words": 46,
+      "reply": "Τοποθετείται στο cloud με Ollama runtime για τοπική εκτέλεση, ώστε να μην έχει εξάρτηση από εξωτερική συνδεσιμότητα ή latency. Επίσης χρησιμοποιώ Docker σε Compose για containerization της λύσης. Η αποθήκευση γίνεται τοπικά μέσω Delta Lake στην Databricks και συγχρονίζεται περιοδικά με ChromaDB για το retrieval κομμάτι."
+    }
+  ]
+}
