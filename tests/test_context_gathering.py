@@ -168,3 +168,180 @@ def test_the_explanation_lives_in_detail_not_in_the_prompt():
         if response.status == "unavailable":
             assert response.context == ""
             assert "διαπιστευτήρια" in response.detail
+
+
+# ── Το context του καλούντα δεν ακυρώνει την άντληση ─────────
+
+
+def test_the_callers_context_does_not_switch_off_the_rest():
+    """Ήταν ``else``, και αυτό ακύρωνε ολόκληρη τη σχεδίαση.
+
+    Το frontend καλεί το webhook του n8n, όχι το /generate. Το n8n στέλνει
+    δικό του context από τον κλάδο του, οπότε με ``else`` η πολυπηγαία
+    άντληση δεν έτρεχε ΠΟΤΕ στη μόνη διαδρομή που βλέπει ο χρήστης — και
+    το διάγραμμα συνέχιζε να ανάβει τους ίδιους τρεις κόμβους.
+
+    Το context του καλούντα είναι μία πηγή ανάμεσα σε άλλες.
+    """
+    import inspect
+
+    from jarvis.orchestration import api_routes
+
+    source = inspect.getsource(api_routes.generate)
+    assert "if req.context:" in source
+    # Δεν επιτρέπεται να υπάρχει else που να παρακάμπτει την άντληση.
+    body = source.split("if req.context:", 1)[1]
+    before_gather = body.split("gather_context", 1)[0]
+    assert "\n    else:" not in before_gather, (
+        "η άντληση εξαρτάται πάλι από το αν ο καλών έστειλε context"
+    )
+
+
+def test_sources_used_is_reported_for_the_ui():
+    """Το διάγραμμα πρέπει να δείχνει εκτέλεση, όχι πρόθεση.
+
+    Ο στατικός χάρτης INTENT_NODES άναβε πάντα τους ίδιους κόμβους ανά
+    intent. Ένα διάγραμμα που μοιάζει να δείχνει τι έτρεξε ενώ δείχνει τι
+    σχεδιάστηκε είναι πειστικό, και η πειστικότητα είναι το πρόβλημα.
+    """
+    from jarvis.orchestration.api_routes import GenerateResponse
+
+    fields = GenerateResponse.model_fields
+    for name in ("sources_used", "sources_empty", "intent"):
+        assert name in fields, f"το {name} λείπει από την απόκριση"
+
+
+# ── «Δεν βλέπω» ≠ «δεν έχω» ──────────────────────────────────
+
+
+@pytest.mark.parametrize("reply", [
+    "Καλημέρα, δεν έχω προγραμματίσει κάτι. Θα είμαι σπίτι αν θες να περάσεις.",
+    "δεν έχω τίποτα αύριο",
+    "είμαι ελεύθερος όλη μέρα",
+    "θα είμαι σπίτι κατά τις 10",
+])
+def test_a_claim_about_an_unopened_calendar_is_replaced(reply):
+    """Το «δεν έχω κάτι» είναι ισχυρισμός ΓΙΑ το ημερολόγιο.
+
+    Δηλώνει ότι είναι άδειο, και το ημερολόγιο δεν ανοίχτηκε ποτέ. Είναι
+    ηπιότερο από «καφέ στις 6:30 και μπάσκετ 8-9» — που ήταν η απάντηση
+    πριν από κάθε διόρθωση — αλλά ίδιας φύσης: βεβαιότητα χωρίς πηγή.
+
+    Η διαφορά ανάμεσα σε «δεν βλέπω» και «δεν έχω» είναι μία λέξη και δύο
+    εντελώς διαφορετικοί ισχυρισμοί. Το μοντέλο δεν την κάνει αξιόπιστα
+    ούτε με ρητή οδηγία και παράδειγμα, οπότε υπάρχει και ντετερμινιστικό
+    δίχτυ — η ίδια λογική με τις οικείες προσφωνήσεις στο κεφάλαιο 7.
+    """
+    from jarvis.orchestration.api_routes import (
+        ContextResponse, ContextSource, _refuse_ungrounded_schedule,
+    )
+
+    gathered = ContextResponse(
+        context="", sources=[ContextSource(name="calendar",
+                                           status="unavailable",
+                                           detail="χωρίς διαπιστευτήρια")],
+        intent="schedule", total_words=0,
+    )
+    out, refused = _refuse_ungrounded_schedule(reply, gathered)
+    assert refused is True
+    assert out != reply
+    assert "δεν ξέρω τι έχω" in out
+
+
+def test_a_grounded_claim_is_left_alone():
+    """Όταν το ημερολόγιο απάντησε, το «δεν έχω κάτι» είναι σωστό."""
+    from jarvis.orchestration.api_routes import (
+        ContextResponse, ContextSource, _refuse_ungrounded_schedule,
+    )
+
+    gathered = ContextResponse(
+        context="[CALENDAR] καμία εγγραφή",
+        sources=[ContextSource(name="calendar", status="ok", words=3)],
+        intent="schedule", total_words=3,
+    )
+    reply = "δεν έχω τίποτα αύριο"
+    assert _refuse_ungrounded_schedule(reply, gathered) == (reply, False)
+
+
+def test_other_intents_are_untouched():
+    from jarvis.orchestration.api_routes import (
+        ContextResponse, ContextSource, _refuse_ungrounded_schedule,
+    )
+
+    gathered = ContextResponse(
+        context="", sources=[ContextSource(name="rag", status="ok", words=5)],
+        intent="casual", total_words=5,
+    )
+    reply = "είμαι ελεύθερος να τα πούμε"
+    assert _refuse_ungrounded_schedule(reply, gathered) == (reply, False)
+
+
+@pytest.mark.parametrize("reply", [
+    # Όλα καταγεγραμμένα από ζωντανή εκτέλεση, άτονα όπως γράφει το μοντέλο.
+    "Θα ειμαι σπιτι αν θες να περασεις μια βολτα.",
+    "Θα ειμαι σπιτι να χαλαρωσω. Θα φυγω απο τη σχολη 2:30-3",
+    "Θα πάω σε ένα παιδικό πάρτυ απογευματακι",
+    "εχω μαθημα το απογευμα",
+])
+def test_the_pattern_survives_missing_accents(reply):
+    """Το «θα είμαι σπίτι» ήταν στη λίστα και πέρασε ως «Θα ειμαι σπιτι».
+
+    Το corpus είναι μηνύματα από κινητό: κανείς δεν βάζει τόνους, το μοντέλο
+    έμαθε να μη βάζει, και ένα μοτίβο γραμμένο με τόνους πιάνει τη μία μορφή
+    που δεν εμφανίζεται ποτέ.
+
+    Έκτη φορά στο έργο που μοτίβο και κείμενο γράφονται σε διαφορετική
+    ορθογραφία — τελικό σίγμα, τόνος στο «Αθηνάς», τώρα αποτονισμός. Η
+    θεραπεία είναι πάντα η ίδια συνάρτηση κανονικοποίησης και για τα δύο.
+    """
+    from jarvis.orchestration.api_routes import (
+        ContextResponse, ContextSource, _refuse_ungrounded_schedule,
+    )
+
+    gathered = ContextResponse(
+        context="", sources=[ContextSource(name="calendar",
+                                           status="unavailable", detail="—")],
+        intent="schedule", total_words=0,
+    )
+    out, refused = _refuse_ungrounded_schedule(reply, gathered)
+    assert refused is True, f"ξέφυγε: {reply}"
+    assert "δεν ξέρω τι έχω" in out
+
+
+def test_the_archive_is_dropped_when_the_calendar_is_silent():
+    """Το αρχείο απαντά για το παρελθόν· η ερώτηση αφορά το αύριο.
+
+    Με ημερολόγιο, το αρχείο είναι χρήσιμο συμπλήρωμα. Χωρίς, γίνεται το
+    μόνο υλικό στο τραπέζι και το μοντέλο απαντά από αυτό:
+
+        «Αυτό που είχαμε πει για την εργασία στο μάθημα είναι να γίνει
+         σήμερα»
+        «αυτό που λέγαμε εχθές?»
+
+    Και οι δύο καταγράφηκαν ζωντανά, με το πλαίσιο του αρχείου να λέει ήδη
+    ρητά «ΜΗΝ αντιγράφεις ημερομηνίες, ώρες ή ραντεβού· αν δεν σχετίζεται,
+    αγνόησέ το τελείως». Η οδηγία μειώνει τη συχνότητα· δεν τη μηδενίζει.
+    """
+    from jarvis.orchestration.api_routes import _EXCLUDE_WITHOUT_PRIMARY
+
+    assert "rag" in _EXCLUDE_WITHOUT_PRIMARY["schedule"]
+
+    result = _gather("τι θα κανεις αυριο το απογευμα;")
+    by_name = {s.name: s for s in result.sources}
+    calendar_ok = by_name.get("calendar") and by_name["calendar"].status == "ok"
+    if not calendar_ok and "rag" in by_name:
+        assert by_name["rag"].status in {"dropped", "unavailable", "empty"}
+        assert "[RAG]" not in result.context
+
+
+def test_the_archive_survives_when_the_question_is_recall():
+    """Ο αποκλεισμός αφορά ΜΟΝΟ το schedule.
+
+    Στο «τι μου έλεγες για το σπίτι» το αρχείο ΕΙΝΑΙ η σωστή πηγή, και ένας
+    κανόνας που το έκοβε παντού θα κατέστρεφε τη μία λειτουργία που το
+    δικαιολογεί.
+    """
+    from jarvis.orchestration.api_routes import _EXCLUDE_WITHOUT_PRIMARY
+
+    for intent in ("knowledge", "memory", "personal", "casual"):
+        assert "rag" not in _EXCLUDE_WITHOUT_PRIMARY.get(intent, ())

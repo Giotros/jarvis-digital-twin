@@ -108,8 +108,8 @@ const NODE_INFO = {
   },
   rag: {
     title: "RAG Search",
-    desc: "Αναζητά σχετικές συνομιλίες στο training corpus (109K pairs) χρησιμοποιώντας vector similarity search. Βρίσκει πώς θα απαντούσε ο Γιώργος σε παρόμοιες ερωτήσεις.",
-    tech: "ChromaDB · Sentence Embeddings",
+    desc: "Αναζητά στο αρχείο των 13.289 προσωπικών συνομιλιών με υβριδική αναζήτηση: BM25 για ακριβείς λέξεις και πυκνά διανύσματα για παραφράσεις, συντηγμένα με RRF. Βρίσκει τι έχει ήδη ειπωθεί, όχι πώς θα απαντούσε.",
+    tech: "ChromaDB · BM25 + dense · RRF k=60",
   },
   identity: {
     title: "Identity Lookup",
@@ -143,13 +143,13 @@ const NODE_INFO = {
   },
   krikri: {
     title: "Krikri LLM",
-    desc: "Το fine-tuned language model — Mistral-7B + QLoRA adapters (109K Persona-Chat pairs). Παράγει την απάντηση χρησιμοποιώντας context από τα ενεργά nodes.",
-    tech: "Mistral-7B · QLoRA · 4-bit · Google Colab T4",
+    desc: "Το fine-tuned language model — Llama-Krikri-8B-Instruct (ΙΕΛ/Αθηνά) με QLoRA adapter εκπαιδευμένο σε 13.289 ζεύγη από προσωπικές συνομιλίες. Το Mistral-7B εξετάστηκε και απορρίφθηκε: έσπαγε τις ελληνικές λέξεις σε πολύ περισσότερα tokens.",
+    tech: "Krikri-8B · QLoRA r=64 · 4-bit NF4 · Ray · Colab T4/A100",
   },
   factcheck: {
     title: "Fact Check",
-    desc: "Ελέγχει για hallucinations: λάθος ηλικία, skills, εταιρείες. Αφαιρεί ψευδείς πληροφορίες πριν φτάσει η απάντηση στον χρήστη.",
-    tech: "Rule-based · Identity Validation",
+    desc: "Τέσσερις έλεγχοι για επινοήσεις: λίστα γνωστών λαθών, λίστα τεκμηριωμένων εργαλείων, αναπτύγματα ακρωνυμίων, και παραφθαρμένα ονόματα. Αν βρεθεί αντίφαση, η απάντηση ξαναπαράγεται μία φορά — και αν ξαναποτύχει, το σύστημα αρνείται αντί να πει ψέμα.",
+    tech: "Denylist + allowlist · retry · refusal"
   },
   guardrails: {
     title: "Guardrails",
@@ -164,6 +164,13 @@ const NODE_INFO = {
 };
 
 // ── Intent → active nodes mapping ──────────────────────────────
+// Εφεδρικό μόνο: χρησιμοποιείται όταν το backend δεν αναφέρει πηγές.
+const intentSourceFallback = {
+  PERSONAL: "Identity", KNOWLEDGE: "RAG Corpus", CASUAL: "Krikri LLM",
+  SENSITIVE: "Human Review", MEMORY: "Gmail", SCHEDULE: "Calendar",
+  DEVOPS: "GitHub", WEATHER: "Weather API", NEWS: "News API",
+};
+
 const INTENT_NODES = {
   PERSONAL: ["intent", "identity", "krikri", "factcheck", "guardrails", "output"],
   KNOWLEDGE: ["intent", "rag", "krikri", "factcheck", "guardrails", "output"],
@@ -643,7 +650,7 @@ export default function JarvisDigitalTwin() {
   const [hoveredNode, setHoveredNode] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [isLive, setIsLive] = useState(false);
-  const [stats, setStats] = useState({ messages: 0, accuracy: 96, avgTime: 0, sources: 9 });
+  const [stats, setStats] = useState({ messages: 0, sourcesUsed: 0, avgTime: 0, sources: 9 });
 
   // Who is talking, asked once per session. Held in component state only —
   // no localStorage, no cookie, nothing written to the server. Reloading the
@@ -661,9 +668,32 @@ export default function JarvisDigitalTwin() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Animate nodes sequentially
-  const animatePipeline = useCallback((intent) => {
-    const nodes = INTENT_NODES[intent] || INTENT_NODES.CASUAL;
+  // Animate nodes sequentially.
+  //
+  // Δέχεται προαιρετικά τις ΠΡΑΓΜΑΤΙΚΕΣ πηγές που χρησιμοποιήθηκαν. Ο
+  // στατικός χάρτης INTENT_NODES μένει μόνο ως εφεδρικό, για όταν το
+  // backend δεν τις αναφέρει.
+  //
+  // Ο χάρτης ήταν το μοναδικό κριτήριο: το CASUAL άναβε πάντα τέσσερις
+  // κόμβους και το SCHEDULE πάντα πέντε, ανεξάρτητα από το τι εκτελέστηκε.
+  // Ένα διάγραμμα που μοιάζει να δείχνει εκτέλεση ενώ δείχνει πρόθεση δεν
+  // είναι απλώς ανακριβές — είναι πειστικό, και η πειστικότητα είναι το
+  // πρόβλημα. Ο εξεταστής βλέπει έναν κόμβο να ανάβει και συμπεραίνει ότι
+  // κάτι έτρεξε.
+  const animatePipeline = useCallback((intent, usedSources) => {
+    const fallback = INTENT_NODES[intent] || INTENT_NODES.CASUAL;
+    let nodes = fallback;
+
+    if (Array.isArray(usedSources) && usedSources.length > 0) {
+      // Τα ονόματα του API στα id του διαγράμματος.
+      const nodeFor = { rag: "rag", calendar: "calendar", email: "gmail",
+                        weather: "weather", news: "news", github: "github",
+                        identity: "identity" };
+      const middle = usedSources.map((s) => nodeFor[s]).filter(Boolean);
+      nodes = ["intent", ...middle, "krikri", "factcheck", "guardrails",
+               "output"];
+    }
+
     setActiveNodes([]);
     setAnimatingNodes([]);
 
@@ -718,13 +748,27 @@ export default function JarvisDigitalTwin() {
       const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
 
       const intent = (data.intent || "CASUAL").toUpperCase();
-      animatePipeline(intent);
+      // sources_used: ό,τι όντως συνεισέφερε context. Αν το backend είναι
+      // παλιότερο και δεν το στέλνει, η animatePipeline πέφτει στον χάρτη.
+      animatePipeline(intent, data.sources_used);
 
-      const intentSourceMap = {
-        PERSONAL: "Identity", KNOWLEDGE: "RAG Corpus", CASUAL: "Krikri LLM",
-        SENSITIVE: "Human Review", MEMORY: "Gmail", SCHEDULE: "Calendar",
-        DEVOPS: "GitHub", WEATHER: "Weather API", NEWS: "News API",
+      // Η ετικέτα δείχνει ποιες πηγές ΑΠΑΝΤΗΣΑΝ, όχι ποιες υποτίθεται
+      // ότι αντιστοιχούν στο intent.
+      //
+      // Ο παλιός χάρτης έλεγε «via Calendar» για κάθε ερώτηση
+      // δρομολογημένη σε SCHEDULE — ακόμα και όταν το ημερολόγιο δεν είχε
+      // διαπιστευτήρια και δεν είχε επιστρέψει τίποτα. Ο χρήστης έβλεπε
+      // την ετικέτα, έβλεπε τον κόμβο αναμμένο, και συμπέραινε ότι η
+      // απάντηση στηρίζεται σε δεδομένα. Στηριζόταν σε επινόηση.
+      const sourceLabels = {
+        rag: "RAG Corpus", calendar: "Calendar", email: "Gmail",
+        weather: "Weather API", news: "News API", github: "GitHub",
+        identity: "Identity",
       };
+      const used = Array.isArray(data.sources_used) ? data.sources_used : null;
+      const sourceText = used && used.length
+        ? used.map((s) => sourceLabels[s] || s).join(" + ")
+        : (used ? "Krikri LLM (χωρίς πηγές)" : intentSourceFallback[intent]);
 
       setTimeout(() => {
         setIsTyping(false);
@@ -734,13 +778,14 @@ export default function JarvisDigitalTwin() {
             type: "twin",
             text: data.reply || data.error || "Δεν μπόρεσα να απαντήσω.",
             intent,
-            source: intentSourceMap[intent] || "Unknown",
+            source: sourceText || "Unknown",
             confidence: Math.round((data.confidence || 0) * 100),
             time: `${elapsed}s`,
           },
         ]);
         setStats((s) => ({
           ...s,
+          sourcesUsed: Array.isArray(data.sources_used) ? data.sources_used.length : 0,
           messages: s.messages + 1,
           avgTime: ((parseFloat(s.avgTime || 0) * s.messages + parseFloat(elapsed)) / (s.messages + 1)).toFixed(1),
         }));
@@ -1212,9 +1257,22 @@ export default function JarvisDigitalTwin() {
               padding: "10px 24px", borderTop: `1px solid ${t.border}`, background: t.statsBar,
             }}
           >
+            {/*
+              Το «Accuracy 96%» ήταν σταθερά στον κώδικα και δεν άλλαζε
+              ποτέ. Ένα ποσοστό ακρίβειας που δεν μετριέται είναι ακριβώς η
+              ψευδοακρίβεια που το ίδιο το σύστημα ελέγχεται να μην παράγει
+              — και βρισκόταν μόνιμα στην οθόνη, μπροστά σε όποιον κάνει
+              την επίδειξη. Η ερώτηση «τι σημαίνει αυτό το 96%;» δεν έχει
+              καλή απάντηση.
+
+              Αντικαταστάθηκε από το πόσες πηγές ΑΠΑΝΤΗΣΑΝ στο τελευταίο
+              μήνυμα, που είναι μετρημένο και αλλάζει.
+            */}
             {[
               { value: stats.messages, label: "Messages", color: t.accent },
-              { value: `${stats.accuracy}%`, label: "Accuracy", color: t.green },
+              { value: `${stats.sourcesUsed ?? 0}/${stats.sources}`,
+                label: "Πηγές που απάντησαν",
+                color: (stats.sourcesUsed ?? 0) > 0 ? t.green : t.textMuted },
               { value: `${stats.avgTime || 0}s`, label: "Avg response", color: t.orange },
               { value: stats.sources, label: "Data sources", color: t.accentLight },
             ].map((stat, i) => (
