@@ -421,3 +421,69 @@ def test_examiner_questions_route_to_personal(question):
 def test_rerouting_did_not_disturb_the_other_branches(question, expected):
     """Moving two categories must not shift the seven that were correct."""
     assert classify_intent(question).intent == expected
+
+
+# ── Ο χαιρετισμός ως θόρυβος ─────────────────────────────────
+#
+# Παρατηρήθηκε 23/08/2026 στη διεπαφή. Το «καλησπέρα» ταίριαζε casual με
+# βάρος 0,90 — υψηλότερο από κάθε μοτίβο schedule ή personal — οπότε κάθε
+# ευγενικό μήνυμα παρέκαμπτε όλη τη δρομολόγηση.
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("καλησπερα σας, ποιοι ειναι οι περιορισμοι της εργασιας;", "personal"),
+    ("καλημερα, τι μου ελεγες για το σπιτι;", "knowledge"),
+    ("γεια σου, τι εχεις αυριο στο ημερολογιο;", "schedule"),
+    ("hello, ποιο μοντελο χρησιμοποιησες;", "personal"),
+    ("χαιρετε, πως εγινε η εκπαιδευση;", "personal"),
+])
+def test_a_greeting_does_not_decide_the_intent(message, expected):
+    """An examiner opens politely, and politeness was routing the question.
+
+    The worst instance: «καλησπέρα γιώργο, τι θα κάνεις αύριο το απόγευμα;»
+    classified casual, so the calendar was never consulted and the model
+    invented a trip to Nafplio with a departure time and a return time. A
+    fabricated appointment is the most damaging thing a digital twin can
+    say, because it sounds exactly like a real one.
+    """
+    assert classify_intent(message).intent.value == expected
+
+
+@pytest.mark.parametrize("message", [
+    "καλησπερα",
+    "καλημερα!",
+    "γεια σου ρε φιλε",
+    "hey",
+])
+def test_a_bare_greeting_is_still_casual(message):
+    """Stripping must not turn "καλησπέρα" into an empty message.
+
+    If nothing survives the strip, the original text stands — a greeting on
+    its own really is casual, and the fix must not make it unclassifiable.
+    """
+    assert classify_intent(message).intent.value == "casual"
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("τι θα κανεις αυριο το απογευμα;", "schedule"),
+    ("αυριο το βραδυ εισαι ελευθερος;", "schedule"),
+    ("τι εχεις μεθαυριο το πρωι;", "schedule"),
+])
+def test_a_day_part_without_the_word_programme(message, expected):
+    """"Αύριο το απόγευμα" is a schedule question with no schedule keyword."""
+    assert classify_intent(message).intent.value == expected
+
+
+@pytest.mark.parametrize("message", [
+    "ποιο μοντελο χρησιμοποιησες;",
+    "πως εγινε η εκπαιδευση;",
+    "που τρεχει το συστημα;",
+    "τι dataset χρησιμοποιησες;",
+])
+def test_the_first_questions_an_examiner_asks(message):
+    """These matched nothing unless the examiner named the model himself.
+
+    That is, they only routed correctly when the asker already knew the
+    answer — the opposite of when routing matters.
+    """
+    assert classify_intent(message).intent.value == "personal"

@@ -32,6 +32,27 @@ services:
       - N8N_RUNNERS_ENABLED=true
       - N8N_SECURE_COOKIE=false
       - N8N_LOG_LEVEL=debug
+      # ── Δημόσιο URL για OAuth ──────────────────────────────
+      #
+      # Χωρίς αυτό, το n8n παράγει redirect URI με βάση το localhost:
+      #     http://localhost:5678/rest/oauth2-credential/callback
+      # Η Google το απορρίπτει, οπότε η σύνδεση Gmail και Calendar δεν
+      # ολοκληρώνεται ποτέ — και το σύστημα καταλήγει να απαντά για το
+      # αύριο χωρίς ημερολόγιο. Εκεί γεννήθηκε η επινοημένη εκδρομή.
+      #
+      # Με ngrok, βάλε στο .env τη διεύθυνση του τούνελ:
+      #     NGROK_URL=https://xxxx-xx-xx.ngrok-free.app
+      # και καταχώρησε ΤΟ ΙΔΙΟ URL + /rest/oauth2-credential/callback στο
+      # Google Cloud Console → Credentials → Authorized redirect URIs.
+      #
+      # ΠΡΟΣΟΧΗ: στο δωρεάν ngrok η διεύθυνση αλλάζει σε κάθε εκκίνηση, και
+      # τότε πρέπει να ενημερωθούν ΚΑΙ τα δύο. Ένα σταθερό domain (ngrok
+      # free static domain) το λύνει μια για πάντα και αξίζει τον κόπο πριν
+      # την παρουσίαση.
+      - N8N_HOST=${NGROK_HOST:-localhost}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${NGROK_URL:-http://localhost:5678/}
+      - N8N_EDITOR_BASE_URL=${NGROK_URL:-http://localhost:5678/}
     volumes:
       - n8n_data:/home/node/.n8n
     networks:

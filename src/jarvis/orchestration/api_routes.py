@@ -414,10 +414,32 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         message=req.message,
     )
 
-    if req.context:
-        from jarvis.rag.context_builder import frame_context
+    from jarvis.rag.context_builder import frame_context, frame_live_context
 
+    if req.context:
+        # Ο καλών έφερε δικό του context (ο κλάδος του n8n). Πλαισιώνεται ως
+        # αρχείο, όπως πάντα — αυτή η διαδρομή δεν αλλάζει.
         system += "\n\n" + frame_context(req.context)
+    else:
+        # Κανείς δεν έδωσε context: αντλούμε από ΟΛΕΣ τις πηγές παράλληλα.
+        #
+        # Η προηγούμενη σχεδίαση άφηνε τη διαδρομή αυτή εντελώς χωρίς
+        # τεκμήρια, και εκεί γεννήθηκε η επινοημένη εκδρομή στο Ναύπλιο:
+        # ερώτηση για το αύριο, καμία πηγή, πλήρεις λεπτομέρειες.
+        #
+        # Το αρχείο και τα τρέχοντα στοιχεία πλαισιώνονται ΧΩΡΙΣΤΑ, με
+        # αντίθετες οδηγίες. Ενωμένα, το ημερολόγιο θα έμπαινε κάτω από
+        # «ΜΗΝ αντιγράφεις ώρες και ραντεβού» και θα αγνοούνταν σιωπηλά.
+        try:
+            gathered = await gather_context(ContextRequest(message=req.message))
+            if gathered.archived:
+                system += "\n\n" + frame_context(gathered.archived)
+            if gathered.live:
+                system += "\n\n" + frame_live_context(gathered.live)
+        except Exception as exc:  # noqa: BLE001
+            # Η άντληση δεν πρέπει να ρίξει την απάντηση. Καταγράφεται όμως
+            # ρητά: το κεφάλαιο 6 μετράει τι κόστισε η σιωπηλή αποτυχία.
+            logger.warning("Context gathering failed: %s", exc)
 
     # Optional ablation: serve the academic register from the base model with
     # no adapter attached. Unset by default, so nothing changes unless the
@@ -526,6 +548,243 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# ── Πολυπηγαίο context ──────────────────────────────────────────
+#
+# Μέχρι εδώ, η ταξινόμηση πρόθεσης διάλεγε ΜΙΑ πηγή και ο Switch του n8n
+# έκοβε τις υπόλοιπες. Η απλοποίηση φάνηκε όταν ρωτήθηκε «τι θα κάνεις
+# αύριο το απόγευμα;»: η ερώτηση χρειάζεται ταυτόχρονα το ημερολόγιο (τι
+# υπάρχει) και το αρχείο συνομιλιών (τι έχει ειπωθεί), και πήρε κανένα από
+# τα δύο.
+#
+# ΤΟ ΚΟΣΤΟΣ ΕΙΝΑΙ ΜΕΤΡΗΜΕΝΟ, ΟΧΙ ΥΠΟΘΕΤΙΚΟ
+# ------------------------------------------
+# Το system prompt του academic register είναι ήδη ~963 λέξεις. Έξι πηγές
+# ασυμπίεστες προσθέτουν ~450 ακόμα. Και ξέρουμε από το κεφάλαιο 7 τι
+# συμβαίνει σε αυτά τα μεγέθη: 715 λέξεις τεκμηρίου έδωσαν 37λεξη απάντηση
+# σε register με μετρημένο στόχο 6. Το πλήθος του context πνίγει το ύφος
+# πολύ πριν πνίξει την ακρίβεια, και το κεφάλαιο 6 τεκμηριώνει και το
+# context bleeding: το μοντέλο αντέγραψε ημερομηνία από άσχετο υλικό
+# επειδή του δόθηκε.
+#
+# Άρα «όλες οι πηγές» ΝΑΙ, «όλο το κείμενό τους» ΟΧΙ. Κάθε πηγή έχει
+# προϋπολογισμό λέξεων, το σύνολο έχει ανώτατο όριο, και η σειρά — όχι το
+# αν — καθορίζεται από την πρόθεση.
+
+#: Πόσες λέξεις δικαιούται κάθε πηγή. Επιλογή, όχι μέτρηση: αντανακλά
+#: πόση πληροφορία χρειάζεται μια απάντηση από την καθεμία. Το ημερολόγιο
+#: απαντά με δύο γραμμές· το αρχείο συνομιλιών χρειάζεται περισσότερες για
+#: να είναι χρήσιμο.
+_SOURCE_BUDGET: dict[str, int] = {
+    "identity": 0,     # μπαίνει ήδη στο system prompt
+    "rag": 90,
+    "calendar": 60,
+    "email": 90,
+    "weather": 25,
+    "news": 60,
+    "github": 50,
+}
+
+#: Ανώτατο σύνολο. Πάνω από αυτό, οι λιγότερο σχετικές πηγές κόβονται
+#: ολόκληρες αντί να ακρωτηριαστούν όλες — μισή πρόταση από έξι πηγές
+#: είναι χειρότερη από δύο πλήρεις.
+_CONTEXT_BUDGET = 220
+
+#: Σειρά προτεραιότητας ανά πρόθεση. Η πρόθεση δεν αποκλείει πια πηγές·
+#: αποφασίζει ποια μιλάει πρώτη και ποια κόβεται αν τελειώσει ο χώρος.
+_PRIORITY: dict[str, tuple[str, ...]] = {
+    "schedule":  ("calendar", "rag", "email", "weather", "news", "github"),
+    "memory":    ("email", "rag", "calendar", "news", "github", "weather"),
+    "knowledge": ("rag", "email", "calendar", "github", "news", "weather"),
+    "devops":    ("github", "rag", "email", "calendar", "news", "weather"),
+    "weather":   ("weather", "calendar", "rag", "email", "news", "github"),
+    "news":      ("news", "rag", "email", "calendar", "github", "weather"),
+    "personal":  ("rag", "github", "calendar", "email", "news", "weather"),
+    "casual":    ("rag", "calendar", "weather", "email", "news", "github"),
+    "sensitive": (),  # δεν φεύγει τίποτα προς πηγές· βλ. κεφάλαιο 7 §7.2
+}
+
+
+def _trim(text: str, budget: int) -> str:
+    """Κόβει σε όριο λέξεων, σε όριο πρότασης όπου γίνεται.
+
+    Το «…» στο τέλος δεν είναι διακοσμητικό: μια πρόταση κομμένη στη μέση,
+    δοσμένη σε γλωσσικό μοντέλο, καλεί σε συμπλήρωση — και η συμπλήρωση
+    ενός κομμένου ραντεβού είναι επινοημένο ραντεβού. Όπου υπάρχει τελεία
+    κοντά, το κείμενο τελειώνει εκεί.
+    """
+    words = text.split()
+    if len(words) <= budget:
+        return text
+    cut = " ".join(words[:budget]).rstrip()
+    if cut.endswith((".", "·", "!", ";", "?")):
+        return cut
+    for boundary in (". ", "· ", "! ", "? "):
+        head, sep, _ = cut.rpartition(boundary)
+        if sep and len(head.split()) >= budget // 2:
+            return head + sep.strip()
+    return cut + "…"
+
+
+class ContextRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+    intent: str = Field("", description="Από το /intent· κενό = αυτόματο")
+    budget: int = Field(_CONTEXT_BUDGET, ge=40, le=1200)
+
+
+class ContextSource(BaseModel):
+    name: str
+    #: "ok" | "empty" | "unavailable" | "failed" | "dropped"
+    #:
+    #: Ποτέ σιωπηλά κενό. Το κεφάλαιο 6 καταγράφει τι κοστίζει η σιωπηλή
+    #: αποτυχία: η ανάκτηση κατάπινε εξαιρέσεις, επέστρεφε κενό context, και
+    #: το σύστημα έμοιαζε πλήρως λειτουργικό ενώ το μοντέλο επινοούσε
+    #: ελεύθερα. Το «δεν βρέθηκε τίποτα» και το «δεν ρωτήθηκε» φαίνονται
+    #: ίδια στον χρήστη και είναι εντελώς διαφορετικά για όποιον διορθώνει.
+    status: str
+    words: int = 0
+    detail: str = ""
+
+
+class ContextResponse(BaseModel):
+    context: str
+    #: Χωριστά, γιατί χρειάζονται ΑΝΤΙΘΕΤΕΣ οδηγίες.
+    #:
+    #: Το αρχείο συνομιλιών πλαισιώνεται με «ΜΗΝ αντιγράφεις ημερομηνίες,
+    #: ώρες ή ραντεβού» — σωστό, γιατί ο ανακτητής επιστρέφει πάντα κάτι και
+    #: το κάτι είναι συχνά άσχετο (κεφάλαιο 6). Για το ημερολόγιο η ίδια
+    #: οδηγία θα έφερνε τα δεδομένα στο prompt μόνο και μόνο για να
+    #: αγνοηθούν: η ώρα και το ραντεβού είναι ΟΛΟ το περιεχόμενο.
+    #:
+    #: Ενωμένα σε ένα πεδίο, η άντληση θα πετύχαινε και η χρήση θα
+    #: αποτύγχανε σιωπηλά — χωρίς κανένα σήμα ότι κάτι πήγε στραβά.
+    archived: str = ""
+    live: str = ""
+    sources: list[ContextSource]
+    intent: str
+    total_words: int
+    #: Πηγές που ρωτήθηκαν αλλά δεν χώρεσαν. Αναφέρονται ώστε ο
+    #: προϋπολογισμός να είναι ορατός αντί να μοιάζει με απουσία δεδομένων.
+    dropped: list[str] = Field(default_factory=list)
+
+
+@router.post("/context", response_model=ContextResponse)
+async def gather_context(req: ContextRequest) -> ContextResponse:
+    """Αντλεί από ΟΛΕΣ τις πηγές παράλληλα και συνθέτει ένα context.
+
+    Παράλληλα, οπότε ο λανθάνων χρόνος είναι της πιο αργής πηγής και όχι
+    του αθροίσματος — αυτό είναι το μόνο μέρος όπου το «όλες» βγαίνει
+    δωρεάν. Το υπόλοιπο κοστίζει tokens, γι' αυτό υπάρχει προϋπολογισμός.
+    """
+    import asyncio
+
+    intent = req.intent.strip().lower()
+    if not intent:
+        intent = classify_intent(req.message).intent.value
+
+    order = _PRIORITY.get(intent, _PRIORITY["casual"])
+    if not order:
+        return ContextResponse(
+            context="", sources=[], intent=intent, total_words=0,
+        )
+
+    #: Ποιες πηγές είναι αρχείο και ποιες τρέχουσα κατάσταση.
+    archived_sources = {"rag"}
+
+    async def _rag() -> tuple[str, str, str]:
+        try:
+            result = rag_search(RAGRequest(query=req.message, top_k=3))
+            if result.status != "ok":
+                return "", "unavailable", result.detail or result.status
+            return result.context, "ok" if result.context else "empty", ""
+        except Exception as exc:  # noqa: BLE001
+            return "", "failed", str(exc)[:120]
+
+    async def _calendar() -> tuple[str, str, str]:
+        try:
+            result = await calendar_lookup(
+                CalendarRequest(query=req.message, days_ahead=7)
+            )
+            if result.status != "ok":
+                return "", result.status, result.detail
+            return result.context, "ok" if result.context else "empty", ""
+        except HTTPException as exc:
+            return "", "unavailable", str(exc.detail)[:120]
+        except Exception as exc:  # noqa: BLE001
+            return "", "failed", str(exc)[:120]
+
+    async def _email() -> tuple[str, str, str]:
+        try:
+            result = await email_search(EmailSearchRequest(query=req.message))
+            if result.status != "ok":
+                return "", result.status, result.detail
+            return result.context, "ok" if result.context else "empty", ""
+        except HTTPException as exc:
+            return "", "unavailable", str(exc.detail)[:120]
+        except Exception as exc:  # noqa: BLE001
+            return "", "failed", str(exc)[:120]
+
+    async def _absent(name: str) -> tuple[str, str, str]:
+        # Weather, News και GitHub ζουν μόνο στο n8n workflow — δεν έχουν
+        # endpoint εδώ. Δηλώνονται ρητά ως μη διαθέσιμα αντί να λείπουν
+        # σιωπηλά από τη λίστα: το διάγραμμα της διεπαφής τα δείχνει, και
+        # ένας κόμβος που φαίνεται αλλά δεν υπάρχει είναι χειρότερος από
+        # έναν που λέει «δεν είμαι συνδεδεμένος».
+        return "", "unavailable", f"το {name} υλοποιείται στο n8n, όχι στο API"
+
+    fetchers = {
+        "rag": _rag, "calendar": _calendar, "email": _email,
+        "weather": lambda: _absent("weather"),
+        "news": lambda: _absent("news"),
+        "github": lambda: _absent("github"),
+    }
+
+    names = [n for n in order if n in fetchers]
+    results = await asyncio.gather(
+        *(fetchers[n]() for n in names), return_exceptions=True
+    )
+
+    sources: list[ContextSource] = []
+    blocks: list[str] = []
+    archived_blocks: list[str] = []
+    live_blocks: list[str] = []
+    dropped: list[str] = []
+    used = 0
+
+    for name, outcome in zip(names, results):
+        if isinstance(outcome, BaseException):
+            sources.append(ContextSource(
+                name=name, status="failed", detail=str(outcome)[:120]))
+            continue
+        text, status, detail = outcome
+        if status != "ok" or not text.strip():
+            sources.append(ContextSource(
+                name=name, status=status, detail=detail))
+            continue
+
+        allowance = min(_SOURCE_BUDGET.get(name, 60), req.budget - used)
+        if allowance < 15:
+            dropped.append(name)
+            sources.append(ContextSource(
+                name=name, status="dropped", detail="τελείωσε ο χώρος"))
+            continue
+
+        trimmed = _trim(text.strip(), allowance)
+        words = len(trimmed.split())
+        used += words
+        block = f"[{name.upper()}]\n{trimmed}"
+        blocks.append(block)
+        (archived_blocks if name in archived_sources else live_blocks).append(block)
+        sources.append(ContextSource(name=name, status="ok", words=words))
+
+    return ContextResponse(
+        context="\n\n".join(blocks),
+        archived="\n\n".join(archived_blocks),
+        live="\n\n".join(live_blocks),
+        sources=sources, intent=intent,
+        total_words=used, dropped=dropped,
+    )
+
+
 # ── Feedback & Conversation Logging ────────────────────────────
 
 FEEDBACK_LOG = Path(os.getenv("JARVIS_FEEDBACK_LOG", "/app/data/feedback_log.jsonl"))
@@ -598,6 +857,14 @@ class EmailSearchResponse(BaseModel):
     results: list[EmailResult]
     context: str = Field("", description="Formatted context for LLM prompt")
     num_results: int
+    #: "ok" | "unavailable" | "failed" — όπως στο RAGResponse.
+    #:
+    #: Προστέθηκε αφού το «[Email search not configured]» γραφόταν ΜΕΣΑ στο
+    #: context και ταξίδευε ως τεκμήριο. Το πεδίο context είναι το κείμενο
+    #: που μπαίνει στο prompt· ένα διαγνωστικό μήνυμα εκεί μέσα γίνεται
+    #: πρόταση που το μοντέλο καλείται να λάβει υπόψη.
+    status: str = "ok"
+    detail: str = ""
 
 
 class CalendarRequest(BaseModel):
@@ -617,6 +884,9 @@ class CalendarResponse(BaseModel):
     events: list[CalendarEvent]
     free_slots: list[str] = Field(default_factory=list)
     context: str = Field("", description="Formatted context for LLM prompt")
+    #: Βλ. EmailSearchResponse.status.
+    status: str = "ok"
+    detail: str = ""
 
 
 @router.post("/email", response_model=EmailSearchResponse)
@@ -659,9 +929,9 @@ async def email_search(req: EmailSearchRequest) -> EmailSearchResponse:
     else:
         # No Gmail configured — return empty with explanation
         return EmailSearchResponse(
-            results=[],
-            context="[Email search not configured — connect Gmail in n8n]",
-            num_results=0,
+            results=[], context="", num_results=0,
+            status="unavailable",
+            detail="Το Gmail δεν είναι συνδεδεμένο — εκκρεμούν διαπιστευτήρια",
         )
 
 
@@ -703,9 +973,9 @@ async def calendar_lookup(req: CalendarRequest) -> CalendarResponse:
             )
     else:
         return CalendarResponse(
-            events=[],
-            free_slots=[],
-            context="[Calendar not configured — connect Google Calendar in n8n]",
+            events=[], free_slots=[], context="",
+            status="unavailable",
+            detail="Το Google Calendar δεν είναι συνδεδεμένο — εκκρεμούν διαπιστευτήρια",
         )
 
 
